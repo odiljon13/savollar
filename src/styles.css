@@ -319,6 +319,73 @@ select:focus {
   color: #cbd5e1;
 }
 
+.category-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.category-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 20px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-weight: 700;
+  border: 2px solid #eab308;
+  background: linear-gradient(135deg, #fef08a, #facc15);
+  color: #1e293b;
+  box-shadow: 0 4px 12px rgba(250, 204, 21, 0.25);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  gap: 6px;
+}
+
+.category-chip:hover {
+  background: linear-gradient(135deg, #93c5fd, #3b82f6);
+  color: #ffffff;
+  border-color: #2563eb;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.category-chip:hover strong {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.category-chip.active,
+.category-chip:active {
+  background: linear-gradient(135deg, #fca5a5, #ef4444) !important;
+  color: #ffffff !important;
+  border-color: #dc2626 !important;
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3) !important;
+}
+
+.category-chip.active strong,
+.category-chip:active strong {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+
+.category-chip span {
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+}
+
+.category-chip strong {
+  font-size: 0.85rem;
+  background: rgba(30, 41, 59, 0.1);
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: #1e293b;
+  transition: all 0.3s ease;
+}
+
 .quiz-card {
   padding: 24px;
 }

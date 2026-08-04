@@ -438,9 +438,9 @@ export default function App() {
   const currentBlock = Math.floor(currentIndex / BLOCK_SIZE) + 1
   const currentBlockProgress = ((currentIndex % BLOCK_SIZE) + 1) / BLOCK_SIZE * 100
   const categoryCards = [
-    { key: 'javascript', label: 'JavaScript', count: quizQuestions.javascript.length },
-    { key: 'python', label: 'Python', count: quizQuestions.python.length },
-    { key: 'react', label: 'React', count: quizQuestions.react.length },
+    { key: 'javascript', label: 'JavaScript savollari', count: quizQuestions.javascript.length },
+    { key: 'python', label: 'Python savollari', count: quizQuestions.python.length },
+    { key: 'react', label: 'React savollari', count: quizQuestions.react.length },
     { key: 'logic', label: 'Mantiqiy savollar', count: quizQuestions.logic.length },
   ]
 
