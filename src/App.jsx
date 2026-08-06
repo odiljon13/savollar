@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 const mathTemplates = [
   {
@@ -126,15 +126,15 @@ const createLogicQuestions = () => {
 
   for (let i = 0; i < 1500; i += 1) {
     const template = logicTemplates[i % logicTemplates.length]
-    const shuffledOptions = shuffle(template.options)
+    const questionText = `${template.question} (${i + 1})`
 
     questions.push({
       id: `logic-${i + 1}`,
       type: 'logic',
       category: 'Mantiq',
-      question: template.question,
+      question: questionText,
       answer: template.answer,
-      options: shuffledOptions,
+      options: shuffle(template.options),
     })
   }
 
@@ -258,9 +258,11 @@ const createJavaScriptQuestions = () => {
 
   return Array.from({ length: 500 }, (_, index) => {
     const template = baseQuestions[index % baseQuestions.length]
+
     return {
       id: `js-${index + 1}`,
       ...template,
+      question: `${template.question} (${index + 1})`,
       options: shuffle(template.options),
     }
   })
@@ -324,9 +326,11 @@ const createReactQuestions = () => {
 
   return Array.from({ length: 500 }, (_, index) => {
     const template = baseQuestions[index % baseQuestions.length]
+
     return {
       id: `react-${index + 1}`,
       ...template,
+      question: `${template.question} (${index + 1})`,
       options: shuffle(template.options),
     }
   })
@@ -390,9 +394,11 @@ const createPythonQuestions = () => {
 
   return Array.from({ length: 500 }, (_, index) => {
     const template = baseQuestions[index % baseQuestions.length]
+
     return {
       id: `python-${index + 1}`,
       ...template,
+      question: `${template.question} (${index + 1})`,
       options: shuffle(template.options),
     }
   })
@@ -406,10 +412,10 @@ const pythonQuestions = createPythonQuestions()
 const BLOCK_SIZE = 10
 
 const buildQuestionBank = () => ({
-  javascript: shuffle(javascriptQuestions).slice(0, 500),
-  python: shuffle(pythonQuestions).slice(0, 500),
-  react: shuffle(reactQuestions).slice(0, 500),
-  logic: shuffle(logicQuestions).slice(0, 1500),
+  javascript: shuffle(javascriptQuestions),
+  python: shuffle(pythonQuestions),
+  react: shuffle(reactQuestions),
+  logic: shuffle(logicQuestions),
 })
 
 const ADMIN_ACCESS_PASSWORD = '09876543211234567890A'
@@ -498,6 +504,21 @@ export default function App() {
   const handleAnswer = (option) => {
     setSelectedOption(option)
   }
+
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      if (event.key === 'Enter' && selectedOption !== null && !showResult) {
+        event.preventDefault()
+        goToNextQuestion()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [selectedOption, showResult, currentIndex, selectedCategory, quizQuestions])
 
   const resetQuiz = () => {
     setQuizQuestions(buildQuestionBank())
