@@ -5,10 +5,17 @@ from sqlalchemy.orm import Session
 from app.config import ADMIN_USERNAME, ADMIN_PASSWORD, API_PREFIX
 from app.crud import create_question, create_user, get_all_users, get_questions, get_question_by_id, update_question, delete_question, get_user_by_username
 from app.database import Base, engine, get_db
+import logging
+
+logger = logging.getLogger(__name__)
 from app.models import Question
 from app.schemas import AdminLoginRequest, QuestionCreateRequest, QuestionResponse, QuestionUpdateRequest, UserLoginRequest, UserRegisterRequest, UserResponse
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception as e:
+    # don't crash on startup if DB is unreachable; log the error for debugging
+    logger.exception('Error creating database tables: %s', e)
 
 app = FastAPI(title='Logic Quest API', version='1.0.0')
 
