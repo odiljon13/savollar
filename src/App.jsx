@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
+const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
+
 const mathTemplates = [
   {
     title: 'Tenglama',
@@ -36,6 +38,113 @@ const mathTemplates = [
       answer: Math.abs(a - b),
     }),
   },
+  {
+    title: 'Kvadrat',
+    build: (a) => ({ question: `${a} ning kvadrati nimaga teng?`, answer: a * a })
+  },
+  {
+    title: 'Kub',
+    build: (a) => ({ question: `${a % 10} ning kubi nimaga teng?`, answer: Math.pow(a % 10, 3) })
+  },
+  {
+    title: 'Yig\'indi',
+    build: (a, b, c) => ({ question: `${a}, ${b} va ${c} ning yig'indisi qanchaga teng?`, answer: a + b + c })
+  },
+  {
+    title: 'Ko\'paytma',
+    build: (a, b) => ({ question: `${a} va ${b} ning ko'paytmasi qanchaga teng?`, answer: a * b })
+  },
+  {
+    title: 'Perimetr',
+    build: (a, b) => ({ question: `Tomonlari ${a} va ${b} bo'lgan to'g'ri to'rtburchak perimetrini toping.`, answer: 2 * (a + b) })
+  },
+  {
+    title: 'Yuza',
+    build: (a, b) => ({ question: `Tomonlari ${a} va ${b} bo'lgan to'g'ri to'rtburchak yuzasini toping.`, answer: a * b })
+  },
+  {
+    title: 'Qoldiq',
+    build: (a, b) => ({ question: `${a + b + 10} ni ${b % 10 + 2} ga bo'lgandagi qoldiqni toping.`, answer: (a + b + 10) % (b % 10 + 2) })
+  },
+  {
+    title: 'Tenglama 2',
+    build: (a, b) => ({ question: `Agar x - ${a} = ${b} bo'lsa, x ning qiymati qanday?`, answer: a + b })
+  },
+  {
+    title: 'O\'nlik',
+    build: (a) => ({ question: `${a * 10} ning 10% ini toping.`, answer: a })
+  },
+  {
+    title: 'Yarim',
+    build: (a) => ({ question: `${a * 2} ning yarmi qanchaga teng?`, answer: a })
+  }
+]
+
+const physicsTemplates = [
+  {
+    title: 'Tezlik',
+    build: (a, b) => ({ question: `Jism ${a * b} metr masofani ${a} soniyada bosib o'tdi. Uning tezligini toping (m/s).`, answer: b })
+  },
+  {
+    title: 'Masofa',
+    build: (a, b) => ({ question: `Jism ${a} m/s tezlik bilan ${b} soniya harakatlandi. Qancha masofani bosib o'tadi (m)?`, answer: a * b })
+  },
+  {
+    title: 'Vaqt',
+    build: (a, b) => ({ question: `Jism ${a * b} metr masofani ${a} m/s tezlikda bosib o'tishi uchun qancha vaqt ketadi (s)?`, answer: b })
+  },
+  {
+    title: 'Tezlanish',
+    build: (a, b) => ({ question: `Jism tinch holatdan harakatlanib, ${a} soniyada tezligini ${a * b} m/s ga yetkazdi. Tezlanishni toping (m/s²).`, answer: b })
+  },
+  {
+    title: 'Kuch',
+    build: (a, b) => ({ question: `Massa ${a} kg bo'lgan jismga ${b} m/s² tezlanish beruvchi kuchni toping (N).`, answer: a * b })
+  },
+  {
+    title: 'Massa',
+    build: (a, b) => ({ question: `Jismga ${a * b} N kuch ta'sir etganda u ${b} m/s² tezlanish oldi. Jism massasini toping (kg).`, answer: a })
+  },
+  {
+    title: 'Ish',
+    build: (a, b) => ({ question: `${a} N kuch ta'sirida jism kuch yo'nalishida ${b} m masofaga ko'chdi. Bajarilgan ishni toping (J).`, answer: a * b })
+  },
+  {
+    title: 'Quvvat',
+    build: (a, b) => ({ question: `Dvigatel ${a} soniyada ${a * b} J ish bajardi. Uning quvvatini toping (Vt).`, answer: b })
+  },
+  {
+    title: 'Kinetik energiya',
+    build: (a, b) => ({ question: `Massa ${2 * a} kg va tezligi ${b} m/s bo'lgan jismning kinetik energiyasini toping (J).`, answer: a * b * b })
+  },
+  {
+    title: 'Potensial energiya',
+    build: (a, b) => ({ question: `Massa ${a} kg bo'lgan jism yer sirtidan ${b} m balandlikda joylashgan. Uning potensial energiyasini toping (g=10 m/s², J).`, answer: a * b * 10 })
+  },
+  {
+    title: 'Zichlik',
+    build: (a, b) => ({ question: `Hajmi ${a} m³ va massasi ${a * b} kg bo'lgan jismning zichligini toping (kg/m³).`, answer: b })
+  },
+  {
+    title: 'Bosim',
+    build: (a, b) => ({ question: `Yuzasi ${a} m² bo'lgan maydonga perpendikulyar ravishda ${a * b} N kuch ta'sir etmoqda. Bosimni toping (Pa).`, answer: b })
+  },
+  {
+    title: 'Bikrlik',
+    build: (a, b) => ({ question: `Prujina ${a} m ga cho'zilganda unda ${a * b} N elastiklik kuchi hosil bo'ldi. Prujina bikrligini toping (N/m).`, answer: b })
+  },
+  {
+    title: 'Impuls',
+    build: (a, b) => ({ question: `Massa ${a} kg va tezligi ${b} m/s bo'lgan jismning impulsini toping (kg·m/s).`, answer: a * b })
+  },
+  {
+    title: 'Kuch momenti',
+    build: (a, b) => ({ question: `Aylanish o'qidan kuchning yelkasigacha masofa ${b} m, ta'sir etuvchi kuch ${a} N. Kuch momentini toping (N·m).`, answer: a * b })
+  },
+  {
+    title: 'Davr',
+    build: (a, b) => ({ question: `Moddiy nuqta ${a * b} soniyada ${a} marta to'la aylandi. Aylanish davrini toping (s).`, answer: b })
+  }
 ]
 
 const logicTemplates = [
@@ -141,64 +250,143 @@ const createLogicQuestions = () => {
   return questions
 }
 
-const createComputerQuestions = () => [
-  {
-    id: 'computer-1',
-    type: 'computer',
-    category: 'Kompyuter',
-    question: 'Kompyuterning asosiy vazifasi nima?',
-    answer: 'Ma\'lumotni qayta ishlash va natija chiqarish',
-    options: [
-      'Ma\'lumotni qayta ishlash va natija chiqarish',
-      'Faqat matnlarni yozib olish',
-      'Internetga faqatgina ulanish',
-      'Fayllarni faqat ko\'chirish',
-      'Yagona kompyuterga xizmat ko\'rsatish',
-    ],
-  },
-  {
-    id: 'computer-2',
-    type: 'computer',
-    category: 'Kompyuter',
-    question: 'RAM nima uchun ishlatiladi?',
-    answer: 'Hozirgi ishlayotgan dasturlar va ma\'lumotlarni vaqtincha saqlash',
-    options: [
-      'Hozirgi ishlayotgan dasturlar va ma\'lumotlarni vaqtincha saqlash',
-      'Fayllarni doimiy ravishda diskka yozib borish',
-      'Kompyuterni to\'liq o\'chirish',
-      'Foydalanuvchi harakatlarini avtomatik qayd etish',
-      'Barcha dasturlarni xotirada doimiy saqlash',
-    ],
-  },
-  {
-    id: 'computer-3',
-    type: 'computer',
-    category: 'Kompyuter',
-    question: 'Operatsion sistema (OS) qanday vazifani bajaradi?',
-    answer: 'Dasturlar va apparat o\'rtasida aloqa tashkil etadi',
-    options: [
-      'Dasturlar va apparat o\'rtasida aloqa tashkil etadi',
-      'Faqat brauzerdagi saytlarni ochadi',
-      'Foydalanuvchi ma\'lumotlarini faqat saqlaydi',
-      'Kompyuterning ichki xotirasini o\'chirib tashlaydi',
-      'Barcha kodlarni avtomatik yozib beradi',
-    ],
-  },
-  {
-    id: 'computer-4',
-    type: 'computer',
-    category: 'Kompyuter',
-    question: 'CPU nima uchun kerak?',
-    answer: 'Kompyuterning ko\'rsatmalarini bajaruvchi asosiy protsessor',
-    options: [
-      'Kompyuterning ko\'rsatmalarini bajaruvchi asosiy protsessor',
-      'Fayllarni tashuvchi tashqi qurilma',
-      'Internet trafigni saqlovchi xona',
-      'Kompyuter ekranini tozalovchi vosita',
-      'Foydalanuvchi buyruqlarini eslab qoladigan xotira',
-    ],
-  },
-]
+const createComputerQuestions = () => {
+  const baseQuestions = [
+    { question: "Kompyuterning asosiy vazifasi nima?", answer: "Ma'lumotni qayta ishlash va natija chiqarish", options: ["Ma'lumotni qayta ishlash va natija chiqarish", "Faqat matnlarni yozib olish", "Internetga faqatgina ulanish", "Fayllarni faqat ko'chirish", "Yagona kompyuterga xizmat ko'rsatish"] },
+    { question: "RAM nima uchun ishlatiladi?", answer: "Hozirgi ishlayotgan dasturlar va ma'lumotlarni vaqtincha saqlash", options: ["Hozirgi ishlayotgan dasturlar va ma'lumotlarni vaqtincha saqlash", "Fayllarni doimiy ravishda diskka yozib borish", "Kompyuterni to'liq o'chirish", "Foydalanuvchi harakatlarini avtomatik qayd etish", "Barcha dasturlarni xotirada doimiy saqlash"] },
+    { question: "Operatsion sistema (OS) qanday vazifani bajaradi?", answer: "Dasturlar va apparat o'rtasida aloqa tashkil etadi", options: ["Dasturlar va apparat o'rtasida aloqa tashkil etadi", "Faqat brauzerdagi saytlarni ochadi", "Foydalanuvchi ma'lumotlarini faqat saqlaydi", "Kompyuterning ichki xotirasini o'chirib tashlaydi", "Barcha kodlarni avtomatik yozib beradi"] },
+    { question: "CPU nima uchun kerak?", answer: "Kompyuterning ko'rsatmalarini bajaruvchi asosiy protsessor", options: ["Kompyuterning ko'rsatmalarini bajaruvchi asosiy protsessor", "Fayllarni tashuvchi tashqi qurilma", "Internet trafigni saqlovchi xona", "Kompyuter ekranini tozalovchi vosita", "Foydalanuvchi buyruqlarini eslab qoladigan xotira"] },
+    { question: "Qattiq disk (HDD/SSD) vazifasi nima?", answer: "Ma'lumotlarni doimiy saqlash", options: ["Ma'lumotlarni doimiy saqlash", "Tezkor xotirani kengaytirish", "Faqat tizim fayllarini saqlash", "Ekranga tasvir chiqarish", "Protsessorni sovutish"] },
+    { question: "IP manzil nima?", answer: "Tarmoqdagi qurilmaning noyob identifikatori", options: ["Tarmoqdagi qurilmaning noyob identifikatori", "Faqat printerlar uchun raqam", "Fayl formati turi", "Brauzer kengaytmasi", "Xotira hajmini o'lchov birligi"] },
+    { question: "URL nima?", answer: "Internetdagi resursning manzili", options: ["Internetdagi resursning manzili", "Kompyuterning seriya raqami", "Foydalanuvchi paroli", "Tarmoq kabeli turi", "Dasturlash tili"] },
+    { question: "HTML nima uchun ishlatiladi?", answer: "Veb-sahifalar tuzilishini yaratish", options: ["Veb-sahifalar tuzilishini yaratish", "Kompyuterni virusdan tozalash", "Faqat o'yinlar yaratish", "Rasmlarni tahrirlash", "Ma'lumotlar bazasini boshqarish"] },
+    { question: "CSS ning vazifasi nima?", answer: "Veb-sahifalarni bezash va dizayn berish", options: ["Veb-sahifalarni bezash va dizayn berish", "Serverni sozlash", "Tarmoq ulanishini ta'minlash", "Parollarni shifrlash", "Ma'lumotlarni arxivlash"] },
+    { question: "LAN nima?", answer: "Mahalliy kompyuter tarmog'i", options: ["Mahalliy kompyuter tarmog'i", "Xalqaro tarmoq", "Faqat simsiz ulanish", "Tarmoq kabeli qismi", "Operatsion tizim komponenti"] },
+    { question: "WAN nima?", answer: "Keng ko'lamli kompyuter tarmog'i (masalan, Internet)", options: ["Keng ko'lamli kompyuter tarmog'i (masalan, Internet)", "Bitta xonadagi tarmoq", "Tarmoq protokoli", "Kompyuter xotirasi", "Protsessor chastotasi"] },
+    { question: "Fayl kengaytmasi nima?", answer: "Fayl turini ko'rsatuvchi belgi (masalan .pdf)", options: ["Fayl turini ko'rsatuvchi belgi (masalan .pdf)", "Faylning yashirin paroli", "Faylning yaratilish vaqti", "Faylning muallifi", "Fayl joylashgan manzil"] },
+    { question: "Antivirus dasturi nima qiladi?", answer: "Zararli dasturlarni aniqlaydi va yo'q qiladi", options: ["Zararli dasturlarni aniqlaydi va yo'q qiladi", "Internet tezligini oshiradi", "Kompyuterni tezlashtiradi", "Yangi dasturlarni o'rnatadi", "Parollarni buzadi"] },
+    { question: "Bulutli texnologiya nima?", answer: "Ma'lumotlarni internetdagi serverlarda saqlash", options: ["Ma'lumotlarni internetdagi serverlarda saqlash", "Ma'lumotlarni faqat fleshkada saqlash", "Havo ob-havosini aniqlash", "Kompyuter sovutish tizimi", "Simsiz sichqoncha texnologiyasi"] },
+    { question: "BIOS nima?", answer: "Kompyuterni yuklashni boshqaruvchi asosiy tizim", options: ["Kompyuterni yuklashni boshqaruvchi asosiy tizim", "Yangi o'yinlar platformasi", "Maxsus xotira kartasi", "Ekran o'lchamlari parametri", "Foydalanuvchi profilini saqlovchi baza"] },
+    { question: "Klaviatura qanday qurilma?", answer: "Ma'lumot kiritish qurilmasi", options: ["Ma'lumot kiritish qurilmasi", "Ma'lumot chiqarish qurilmasi", "Saqlash qurilmasi", "Aloqa qurilmasi", "Quvvat manbai"] },
+    { question: "Monitor qanday qurilma?", answer: "Ma'lumot chiqarish qurilmasi", options: ["Ma'lumot chiqarish qurilmasi", "Ma'lumot kiritish qurilmasi", "Ma'lumot saqlash qurilmasi", "Protsessor komponenti", "Tarmoq uzatuvchisi"] },
+    { question: "Vebkamera qanday qurilma?", answer: "Ma'lumot kiritish (video) qurilmasi", options: ["Ma'lumot kiritish (video) qurilmasi", "Ma'lumot chiqarish qurilmasi", "Ovoz kuchaytirgich", "Ma'lumot saqlash qurilmasi", "O'yin boshqaruvchisi"] },
+    { question: "Ona plata (Motherboard) nima?", answer: "Barcha kompyuter qismlarini birlashtiruvchi asosiy plata", options: ["Barcha kompyuter qismlarini birlashtiruvchi asosiy plata", "Faqat videokartani saqlovchi plata", "Quvvat ta'minlovchi uskuna", "Kompyuter qutisi", "Sovutish tizimi datchigi"] },
+    { question: "Videokarta (GPU) nima uchun kerak?", answer: "Grafik ma'lumotlarni hisoblash va ekranga chiqarish", options: ["Grafik ma'lumotlarni hisoblash va ekranga chiqarish", "Matnli hujjatlarni saqlash", "Ovoz sifatini yaxshilash", "Internet tarmog'ini yaratish", "Kompyuterni yoqish"] },
+    { question: "Ping buyrug'i nima uchun ishlatiladi?", answer: "Tarmoq ulanishi holatini tekshirish uchun", options: ["Tarmoq ulanishi holatini tekshirish uchun", "Fayllarni o'chirish uchun", "Kompyuterni qayta yuklash uchun", "Yangi foydalanuvchi yaratish uchun", "Parolni o'zgartirish uchun"] },
+    { question: "Kesh xotira (Cache) nima?", answer: "Protsessor tezkor ishlatadigan ma'lumotlarni saqlovchi xotira", options: ["Protsessor tezkor ishlatadigan ma'lumotlarni saqlovchi xotira", "Qattiq diskning boshqa nomi", "Faqat vaqtni saqlaydigan xotira", "Tashqi fleshka xotirasi", "Tarmoq xotirasi"] },
+    { question: "HTTP nima?", answer: "Gipermatn uzatish protokoli", options: ["Gipermatn uzatish protokoli", "Videolarni siqish formati", "Kompyuter xotirasi turi", "Dasturlash tili", "Qidiruv tizimi"] },
+    { question: "Wi-Fi nima?", answer: "Simsiz mahalliy tarmoq texnologiyasi", options: ["Simsiz mahalliy tarmoq texnologiyasi", "Telefon tarmog'i", "Sun'iy yo'ldosh", "Simli ulanish", "Video format"] },
+    { question: "Brauzer nima?", answer: "Veb-sahifalarni ko'rish dasturi", options: ["Veb-sahifalarni ko'rish dasturi", "Kompyuterni tozalash vositasi", "Antivirus dasturi", "Matn muharriri", "Dasturlash muhiti"] },
+    { question: "USB nima?", answer: "Universal ketma-ket shina, qurilmalarni ulash porti", options: ["Universal ketma-ket shina, qurilmalarni ulash porti", "Tezkor xotira turi", "Faqat quvvat manbai", "Tizim paroli", "Kompyuter nomi"] },
+    { question: "Kiberxavfsizlik nima?", answer: "Axborot tizimlarini hujumlardan himoya qilish", options: ["Axborot tizimlarini hujumlardan himoya qilish", "Internet tezligini oshirish", "Kompyuter narxini tushirish", "Faqat antivirus o'rnatish", "Simsiz tarmoq qurish"] },
+    { question: "VPN nima?", answer: "Virtual xususiy tarmoq, xavfsiz ulanish yaratadi", options: ["Virtual xususiy tarmoq, xavfsiz ulanish yaratadi", "Tezkor xotira turi", "Video karta modeli", "Virus nomi", "Matn formati"] },
+    { question: "Spam nima?", answer: "Keraksiz yoki ommaviy elektron xabarlar", options: ["Keraksiz yoki ommaviy elektron xabarlar", "Muhim fayllar tizimi", "Operatsion tizim dasturi", "Antivirus tekshiruvi", "Klaviatura tugmasi"] },
+    { question: "Fayl arxivi (masalan .zip) nima uchun kerak?", answer: "Fayllar hajmini kichraytirish va guruhlash uchun", options: ["Fayllar hajmini kichraytirish va guruhlash uchun", "Fayllarni butunlay o'chirish uchun", "Viruslarni yashirish uchun", "Tezlikni oshirish uchun", "Kompyuter xotirasini kengaytirish uchun"] },
+  ]
+
+  return Array.from({ length: 1500 }, (_, index) => {
+    const template = baseQuestions[index % baseQuestions.length]
+
+    return {
+      id: `computer-${index + 1}`,
+      type: 'computer',
+      category: 'Kompyuter',
+      question: `${template.question} (${index + 1})`,
+      answer: template.answer,
+      options: shuffle(template.options),
+    }
+  })
+}
+
+const createCppQuestions = () => {
+  const baseQuestions = [
+    { question: "C++ tilida o'zgaruvchini qanday e'lon qilamiz?", answer: "Ma'lumot turi va o'zgaruvchi nomi (masalan int a;)", options: ["Ma'lumot turi va o'zgaruvchi nomi (masalan int a;)", "Faqat o'zgaruvchi nomi bilan", "Dastur boshida doim", "Faqat auto so'zi orqali", "C++ da o'zgaruvchilar oldindan e'lon qilinmaydi"] },
+    { question: "C++ da tsikl operatorlaridan qaysi biri post-shartli?", answer: "do-while", options: ["do-while", "for", "while", "if-else", "switch"] },
+    { question: "std::cout vazifasi nima?", answer: "Konsolga ma'lumot chiqarish", options: ["Konsolga ma'lumot chiqarish", "Konsoldan ma'lumot o'qish", "O'zgaruvchi yaratish", "Dasturni tugatish", "Faylga yozish"] },
+    { question: "std::cin vazifasi nima?", answer: "Konsoldan ma'lumot kiritish", options: ["Konsoldan ma'lumot kiritish", "Konsolga chiqarish", "Ma'lumotni tozalash", "Faylni o'qish", "Shartni tekshirish"] },
+    { question: "C++ tilida pointer nima?", answer: "Boshqa o'zgaruvchining xotira manzilini saqlovchi o'zgaruvchi", options: ["Boshqa o'zgaruvchining xotira manzilini saqlovchi o'zgaruvchi", "Oddiy matnli o'zgaruvchi", "Funksiyani to'xtatuvchi kalit so'z", "Massiv uzunligi", "Sinf obyekti"] },
+    { question: "Massivning birinchi elementi indeksi nechadan boshlanadi?", answer: "0", options: ["0", "1", "-1", "Massiv uzunligidan", "10"] },
+    { question: "C++ da class va struct ning farqi nimada?", answer: "class da a'zolar sukut bo'yicha private, struct da public", options: ["class da a'zolar sukut bo'yicha private, struct da public", "struct faqat C tilida bor, C++ da emas", "Hech qanday farqi yo'q", "class obyekt yarata olmaydi", "struct da funksiyalar yozib bo'lmaydi"] },
+    { question: "OOP ning vorislik (inheritance) xususiyati nima?", answer: "Yangi sinfning mavjud sinf xususiyatlarini qabul qilishi", options: ["Yangi sinfning mavjud sinf xususiyatlarini qabul qilishi", "Bir xil nomli funksiyalarni qayta yaratish", "Barcha ma'lumotlarni yashirish", "Funksiyalarga murojaatni taqiqlash", "Xotirani tozalash"] },
+    { question: "OOP ning polimorfizm xususiyati nima?", answer: "Bir interfeys orqali turli obyektlar bilan ishlash", options: ["Bir interfeys orqali turli obyektlar bilan ishlash", "Ma'lumotlarni kapsulaga o'rash", "Obyektni yaratish", "Xotira oqishini oldini olish", "Faqat vorislik bilan ishlaydi"] },
+    { question: "C++ da destruktor qanday yoziladi?", answer: "Tilda belgisi (~) va sinf nomi bilan", options: ["Tilda belgisi (~) va sinf nomi bilan", "delete kalit so'zi bilan", "Faqat () belgilari bilan", "Faqat std::destroy bilan", "Destruktor C++ da yo'q"] },
+    { question: "Konstruktor vazifasi nima?", answer: "Obyekt yaratilganda unga boshlang'ich qiymat berish", options: ["Obyekt yaratilganda unga boshlang'ich qiymat berish", "Obyektni yo'q qilish", "Konsolga chiqarish", "Faqat hisoblash amalini bajarish", "Xatoni ushlash"] },
+    { question: "C++ da izohlar (kommentariya) qanday yoziladi?", answer: "// yoki /* */ orqali", options: ["// yoki /* */ orqali", "# orqali", "<!-- --> orqali", "' ' orqali", "C++ da izohlar yozib bo'lmaydi"] },
+    { question: "new operatori nima uchun ishlatiladi?", answer: "Dinamik xotira ajratish uchun", options: ["Dinamik xotira ajratish uchun", "Yangi funksiya yaratish uchun", "Dinamik massivni o'chirish uchun", "Yangi fayl ochish uchun", "Xatolikni tekshirish uchun"] },
+    { question: "delete operatori nima qiladi?", answer: "new orqali ajratilgan xotirani bo'shatadi", options: ["new orqali ajratilgan xotirani bo'shatadi", "O'zgaruvchini dasturdan o'chiradi", "Funksiyani to'xtatadi", "Faylni kompyuterdan o'chiradi", "Massivni tozalaydi"] },
+    { question: "C++ da header fayllari (masalan .h, .hpp) nima uchun kerak?", answer: "Funksiya va sinflar e'lonini saqlash uchun", options: ["Funksiya va sinflar e'lonini saqlash uchun", "Faqat main() funksiyasini saqlash uchun", "HTML sahifa yaratish uchun", "Suratlarni saqlash uchun", "Ovoz fayllari uchun"] },
+    { question: "Dasturning asosiy ishga tushish nuqtasi qaysi funksiya?", answer: "main()", options: ["main()", "start()", "init()", "run()", "execute()"] },
+    { question: "inline funksiyasining maqsadi nima?", answer: "Kichik funksiyalarni chaqirish o'rniga, kodini o'sha joyga ko'chirish", options: ["Kichik funksiyalarni chaqirish o'rniga, kodini o'sha joyga ko'chirish", "Xatoliklarni yashirish", "Katta ma'lumotlarni saqlash", "Xotira sarfini kamaytirish kafolati", "Dasturni cheksiz aylantirish"] },
+    { question: "namespace nima uchun kerak?", answer: "Nomlar to'qnashuvini (conflict) oldini olish uchun", options: ["Nomlar to'qnashuvini (conflict) oldini olish uchun", "Dasturni tezlashtirish uchun", "Xotira ajratish uchun", "Yangi sinf yaratish uchun", "Fayllarni o'qish uchun"] },
+    { question: "C++ da referens (&) nima?", answer: "Mavjud o'zgaruvchi uchun boshqa nom (taxallus)", options: ["Mavjud o'zgaruvchi uchun boshqa nom (taxallus)", "Faqat pointerlarning boshqa nomi", "Yangi o'zgaruvchi yaratadi", "Fayl manzili", "Xotira manzilini o'zgartiradi"] },
+    { question: "sizeof() operatori nima qiladi?", answer: "O'zgaruvchi yoki tipning xotiradagi hajmini baytlarda qaytaradi", options: ["O'zgaruvchi yoki tipning xotiradagi hajmini baytlarda qaytaradi", "Satrning uzunligini sanaydi", "Massivdagi elementlar sonini topadi", "Pointer manzilini beradi", "Fayl hajmini megabaytda beradi"] },
+    { question: "break operatori nima qiladi?", answer: "Tsikl yoki switch dan chiqish uchun ishlatiladi", options: ["Tsikl yoki switch dan chiqish uchun ishlatiladi", "Dasturni butunlay to'xtatadi", "Tsiklni boshidan boshlaydi", "Faqat if shartida ishlaydi", "Keyingi qadamga o'tadi"] },
+    { question: "continue operatori nima qiladi?", answer: "Tsiklning qolgan qismini tashlab, keyingi iteratsiyaga o'tadi", options: ["Tsiklning qolgan qismini tashlab, keyingi iteratsiyaga o'tadi", "Tsiklni butunlay to'xtatadi", "Dasturni yopadi", "Faqat if-else bilan ishlaydi", "O'zgaruvchini nollaydi"] },
+    { question: "C++ tilida ifodaning noto'g'ri (false) ekanligini qaysi son bildiradi?", answer: "0", options: ["0", "1", "-1", "null", "Hech qaysi"] },
+    { question: "bool ma'lumot turi qanday qiymatlarni saqlaydi?", answer: "true yoki false", options: ["true yoki false", "Faqat butun sonlar", "Matnlar", "Kasr sonlar", "Pointerlar"] },
+    { question: "Virtual funksiya nima?", answer: "Polimorfizmni ta'minlash uchun voris sinfda qayta yozilishi mumkin bo'lgan funksiya", options: ["Polimorfizmni ta'minlash uchun voris sinfda qayta yozilishi mumkin bo'lgan funksiya", "Umuman mavjud bo'lmagan funksiya", "Faqat main() ichida yoziladigan funksiya", "Xotirada joy egallamaydigan funksiya", "C++ da mavjud emas"] },
+    { question: "Template nima uchun ishlatiladi?", answer: "Turli ma'lumot tiplari bilan ishlay oluvchi umumiy (generic) kod yozish uchun", options: ["Turli ma'lumot tiplari bilan ishlay oluvchi umumiy (generic) kod yozish uchun", "Fayllarni nusxalash uchun", "Faqat stringlar bilan ishlash uchun", "Dizayn shablonlarini yaratish uchun", "Obyektlarni yo'q qilish uchun"] },
+    { question: "C++ da xatoliklarni ushlash qanday amalga oshiriladi?", answer: "try, catch, throw orqali", options: ["try, catch, throw orqali", "if-else orqali", "for tsikli orqali", "C++ da xatoliklarni ushlab bo'lmaydi", "Faqat return -1 orqali"] },
+    { question: "const kalit so'zi nima qiladi?", answer: "O'zgaruvchi qiymatini o'zgarmas qiladi", options: ["O'zgaruvchi qiymatini o'zgarmas qiladi", "Yangi sinf yaratadi", "Xotirani tozalaydi", "Funksiyani tezlashtiradi", "Ma'lumot turini almashtiradi"] },
+    { question: "auto kalit so'zi nima vazifa bajaradi?", answer: "Kompilyatorga ma'lumot turini avtomatik aniqlash imkonini beradi", options: ["Kompilyatorga ma'lumot turini avtomatik aniqlash imkonini beradi", "Mashina yozuvini kiritadi", "Faqat massiv yaratadi", "Avtomatik tsikl yaratadi", "C++11 da o'chirib tashlangan"] },
+    { question: "STL (Standard Template Library) nima?", answer: "Konteynerlar, algoritmlar va iteratorlar to'plami bo'lgan kutubxona", options: ["Konteynerlar, algoritmlar va iteratorlar to'plami bo'lgan kutubxona", "Faqat stringlarni saqlovchi modul", "C++ ni kompilatsiya qiluvchi dastur", "GUI yaratuvchi freymvork", "O'yin dvijogi"] }
+  ]
+
+  return Array.from({ length: 1500 }, (_, index) => {
+    const template = baseQuestions[index % baseQuestions.length]
+
+    return {
+      id: `cpp-${index + 1}`,
+      type: 'cpp',
+      category: 'C++',
+      question: `${template.question} (${index + 1})`,
+      answer: template.answer,
+      options: shuffle(template.options),
+    }
+  })
+}
+
+const createMathQuestions = () => {
+  const questions = []
+  for (let i = 0; i < 2000; i += 1) {
+    const template = mathTemplates[i % mathTemplates.length]
+    const a = randomInt(1, 20)
+    const b = randomInt(1, 20)
+    const c = randomInt(1, 20)
+    const { question, answer } = template.build(a, b, c)
+
+    questions.push({
+      id: `math-${i + 1}`,
+      type: 'math',
+      category: 'Matematika',
+      question: `${question} (${i + 1})`,
+      answer,
+      options: buildOptionSet(answer),
+    })
+  }
+  return questions
+}
+
+const createPhysicsQuestions = () => {
+  const questions = []
+  for (let i = 0; i < 2000; i += 1) {
+    const template = physicsTemplates[i % physicsTemplates.length]
+    const a = randomInt(1, 20)
+    const b = randomInt(1, 20)
+    const c = randomInt(1, 20)
+    const { question, answer } = template.build(a, b, c)
+
+    questions.push({
+      id: `physics-${i + 1}`,
+      type: 'physics',
+      category: 'Fizika',
+      question: `${question} (${i + 1})`,
+      answer,
+      options: buildOptionSet(answer),
+    })
+  }
+  return questions
+}
 
 const createJavaScriptQuestions = () => {
   const baseQuestions = [
@@ -404,10 +592,170 @@ const createPythonQuestions = () => {
   })
 }
 
+const createChemistryQuestions = () => {
+  const baseQuestions = [
+    { question: "Atom nima?", answer: "Moddaning eng kichik zarrachasi", options: ["Moddaning eng kichik zarrachasi", "Hujayraning bir qismi", "Energiya manbai", "Yorug'lik zarrachasi", "Koinot jangi"] },
+    { question: "Molekula nima?", answer: "Ikki yoki undan ortiq atomlarning birlashmasi", options: ["Ikki yoki undan ortiq atomlarning birlashmasi", "Faqat kislorod zarrachasi", "Tirik organizm", "Suyuqlik tomchisi", "Fizik maydon"] },
+    { question: "Kimyoviy element nima?", answer: "Bir xil turdagi atomlardan tashkil topgan modda", options: ["Bir xil turdagi atomlardan tashkil topgan modda", "Faqat gazlar", "Suyuqliklar aralashmasi", "Har xil atomlar to'plami", "Turli moddalar birikmasi"] },
+    { question: "Davriy jadvalni kim yaratgan?", answer: "Dmitriy Mendeleyev", options: ["Dmitriy Mendeleyev", "Isaak Nyuton", "Albert Eynshteyn", "Mari Kyuri", "Charlz Darvin"] },
+    { question: "Valentlik nima?", answer: "Atomning boshqa atomlarni biriktirib olish xususiyati", options: ["Atomning boshqa atomlarni biriktirib olish xususiyati", "Moddaning og'irligi", "Kimyoviy reaksiya tezligi", "Moddaning erish harorati", "Gazning hajmi"] },
+    { question: "Oksidlanish reaksiyasi nima?", answer: "Kislorod birikishi yoki elektron yo'qotilishi", options: ["Kislorod birikishi yoki elektron yo'qotilishi", "Suvning ajralishi", "Moddaning sovishi", "Faqat rang o'zgarishi", "Qattiq holatga o'tish"] },
+    { question: "Qaytarilish nima?", answer: "Elektron qo'shib olish jarayoni", options: ["Elektron qo'shib olish jarayoni", "Kislorod qo'shilishi", "Yorug'lik chiqarish", "Issiqlik yutish", "Gaz ajralishi"] },
+    { question: "Kislota nima?", answer: "Vodorod ionlari ajratadigan murakkab modda", options: ["Vodorod ionlari ajratadigan murakkab modda", "Faqat tuzli suv", "Asoslar bilan reaksiyaga kirmaydigan modda", "Faqat qattiq modda", "Metallarning oksidi"] },
+    { question: "Asos nima?", answer: "Gidroksid guruhiga ega bo'lgan modda", options: ["Gidroksid guruhiga ega bo'lgan modda", "Faqat kislotalar", "Suvning bir turi", "Faqat organik moddalar", "Metallmaslar oksidi"] },
+    { question: "Tuz qanday hosil bo'ladi?", answer: "Kislota va asos reaksiyasidan", options: ["Kislota va asos reaksiyasidan", "Faqat suv qaynatilganda", "Ikki gaz aralashganda", "Faqat metall eritilganda", "Muz eriganda"] },
+    { question: "Kimyoviy bog' turlari qaysilar?", answer: "Kovalent, ion, metall, vodorod", options: ["Kovalent, ion, metall, vodorod", "Faqat kovalent", "Faqat fizik bog'lar", "Magnit va elektr", "Issiqlik va yorug'lik"] },
+    { question: "Ion nima?", answer: "Zaryadga ega bo'lgan zarracha", options: ["Zaryadga ega bo'lgan zarracha", "Neytral atom", "Faqat musbat zarra", "Faqat manfiy zarra", "Yorug'lik kvanti"] },
+    { question: "Elektron qanday zaryadga ega?", answer: "Manfiy zaryadga", options: ["Manfiy zaryadga", "Musbat zaryadga", "Zaryadsiz", "O'zgaruvchan zaryadga", "Neytral"] },
+    { question: "Proton qanday zaryadga ega?", answer: "Musbat zaryadga", options: ["Musbat zaryadga", "Manfiy zaryadga", "Zaryadsiz", "Manfiy va musbat", "Neytral"] },
+    { question: "Neytron qanday zaryadga ega?", answer: "Zaryadga ega emas (neytral)", options: ["Zaryadga ega emas (neytral)", "Musbat zaryadga", "Manfiy zaryadga", "Ikkala zaryadga", "Faqat yorug'likda zaryadlanadi"] },
+    { question: "Massa saqlanish qonuni nima?", answer: "Reaksiyaga kirishuvchi moddalar massasi hosil bo'lganlari massasiga teng", options: ["Reaksiyaga kirishuvchi moddalar massasi hosil bo'lganlari massasiga teng", "Moddalar massasi doim o'sadi", "Moddalar massasi doim kamayadi", "Faqat gazlar massasi saqlanadi", "Massa tezlikka bog'liq"] },
+    { question: "Izotop nima?", answer: "Protonlari soni bir xil, neytronlari har xil bo'lgan atomlar", options: ["Protonlari soni bir xil, neytronlari har xil bo'lgan atomlar", "Faqat radioaktiv atomlar", "Turli element atomlari", "Zaryadsiz atomlar", "Yangi topilgan elementlar"] },
+    { question: "Kimyoviy reaksiya turlari qaysilar?", answer: "Birikish, ajralish, o'rin olish, almashinish", options: ["Birikish, ajralish, o'rin olish, almashinish", "Faqat qaytarilish", "Faqat oksidlanish", "Eritish va muzlatish", "Bug'lanish va kondensatsiya"] },
+    { question: "Katalizator nima?", answer: "Kimyoviy reaksiyani tezlashtiruvchi, lekin o'zi sarflanmaydigan modda", options: ["Kimyoviy reaksiyani tezlashtiruvchi, lekin o'zi sarflanmaydigan modda", "Reaksiyani to'xtatuvchi modda", "Faqat rang o'zgartiruvchi modda", "Asosiy reaksiya mahsuloti", "Yonishni qo'llab-quvvatlovchi gaz"] },
+    { question: "Eritma nima?", answer: "Erituvchi va eruvchi moddadan iborat bir jinsli sistema", options: ["Erituvchi va eruvchi moddadan iborat bir jinsli sistema", "Faqat qattiq moddalar aralashmasi", "Faqat suv", "Qaynayotgan suyuqlik", "Loyqa suv"] },
+  ]
+
+  return Array.from({ length: 1000 }, (_, index) => {
+    const template = baseQuestions[index % baseQuestions.length]
+
+    return {
+      id: `chemistry-${index + 1}`,
+      type: 'chemistry',
+      category: 'Kimyo',
+      question: `${template.question} (${index + 1})`,
+      answer: template.answer,
+      options: shuffle(template.options),
+    }
+  })
+}
+
+const createUzbekLanguageQuestions = () => {
+  const baseQuestions = [
+    { question: "Gap bo'laklari necha turga bo'linadi?", answer: "Bosh va ikkinchi darajali", options: ["Bosh va ikkinchi darajali", "Faqat bosh", "Faqat ikkinchi darajali", "Uch turga", "To'rt turga"] },
+    { question: "So'z turkumlari nechta?", answer: "Mustaqil, yordamchi va alohida", options: ["Mustaqil, yordamchi va alohida", "Faqat mustaqil", "Oltita", "Sakkizta", "Faqat ot va fe'l"] },
+    { question: "Unli tovushlar nechta?", answer: "Oltita (a, i, o, u, e, o')", options: ["Oltita (a, i, o, u, e, o')", "Beshita", "Yettita", "Sakkizta", "O'nta"] },
+    { question: "Qo'shma gap nima?", answer: "Ikki yoki undan ortiq sodda gaplardan tuzilgan gap", options: ["Ikki yoki undan ortiq sodda gaplardan tuzilgan gap", "Faqat bitta kesimdan iborat gap", "Faqat so'roq gap", "Faqat undov gap", "Tugallanmagan fikr"] },
+    { question: "Bog'lovchi nima?", answer: "Gap yoki so'zlarni bog'lovchi yordamchi so'z", options: ["Gap yoki so'zlarni bog'lovchi yordamchi so'z", "Mustaqil ma'noli so'z", "Harakatni bildiruvchi so'z", "Belgini bildiruvchi so'z", "Shaxsni ko'rsatuvchi so'z"] },
+    { question: "Tinish belgilari qaysilar?", answer: "Nuqta, vergul, so'roq, undov va h.k.", options: ["Nuqta, vergul, so'roq, undov va h.k.", "Faqat nuqta", "Faqat vergul", "Harflar", "Raqamlar"] },
+    { question: "Antonim nima?", answer: "Qarama-qarshi ma'noli so'zlar", options: ["Qarama-qarshi ma'noli so'zlar", "Bir xil ma'noli so'zlar", "Shakldosh so'zlar", "Chet tilidan kirgan so'zlar", "Yangi paydo bo'lgan so'zlar"] },
+    { question: "Sinonim nima?", answer: "Ma'nosi bir xil, shakli har xil so'zlar", options: ["Ma'nosi bir xil, shakli har xil so'zlar", "Qarama-qarshi so'zlar", "Bir xil yoziladigan so'zlar", "Ma'nosiz so'zlar", "Qadimiy so'zlar"] },
+    { question: "Omonim nima?", answer: "Shakli bir xil, ma'nosi har xil so'zlar", options: ["Shakli bir xil, ma'nosi har xil so'zlar", "Ma'nosi bir xil so'zlar", "Qarama-qarshi so'zlar", "O'xshash so'zlar", "Qo'shma so'zlar"] },
+    { question: "So'z yasalishi qanday bo'ladi?", answer: "So'z yasovchi qo'shimchalar yordamida", options: ["So'z yasovchi qo'shimchalar yordamida", "Faqat ohang orqali", "Faqat takrorlash orqali", "Faqat urg'u orqali", "Gapirish orqali"] },
+    { question: "Morfema nima?", answer: "So'zning eng kichik ma'noli qismi", options: ["So'zning eng kichik ma'noli qismi", "Gapning bir qismi", "Tovushlar yig'indisi", "Alifbo harfi", "Tinish belgisi"] },
+    { question: "Fe'l zamonlari qaysilar?", answer: "O'tgan, hozirgi, kelasi", options: ["O'tgan, hozirgi, kelasi", "Faqat hozirgi", "Faqat o'tgan", "Kelasi va hozirgi", "O'tgan va kelasi"] },
+    { question: "Sifatdosh nima?", answer: "Harakatning belgisini bildiruvchi fe'l shakli", options: ["Harakatning belgisini bildiruvchi fe'l shakli", "Faqat predmet nomi", "Faqat miqdor", "Sof sifat", "Sanoq son"] },
+    { question: "Ravishdosh nima?", answer: "Harakatning holatini bildiruvchi fe'l shakli", options: ["Harakatning holatini bildiruvchi fe'l shakli", "Faqat vaqtni bildiradi", "Faqat joyni bildiradi", "Mustaqil gap bo'lagi", "O'tgan zamon fe'li"] },
+    { question: "Harakat nomi nima?", answer: "Harakatning nomini bildiruvchi fe'l shakli (masalan, o'qish)", options: ["Harakatning nomini bildiruvchi fe'l shakli (masalan, o'qish)", "Buyruq mayli", "Shart mayli", "Ot turkumi", "Sifat turkumi"] },
+    { question: "Ko'makchi nima?", answer: "So'zlarni bir-biriga bog'lovchi yordamchi so'z", options: ["So'zlarni bir-biriga bog'lovchi yordamchi so'z", "Asosiy ish-harakat", "Sifat darajasi", "Ravish turi", "Mustaqil so'z"] },
+    { question: "Yuklamalar nima vazifani bajaradi?", answer: "So'z yoki gapga qo'shimcha ma'no beradi", options: ["So'z yoki gapga qo'shimcha ma'no beradi", "Faqat so'zlarni bog'laydi", "Faqat gap tuzadi", "So'z yasaydi", "Tovushni o'zgartiradi"] },
+    { question: "Imlo nima?", answer: "To'g'ri yozish qoidalari", options: ["To'g'ri yozish qoidalari", "To'g'ri talaffuz", "Gapirish san'ati", "She'r o'qish", "Tez yozish"] },
+    { question: "Gap maqsadiga ko'ra turlari?", answer: "Darak, so'roq, buyruq, undov", options: ["Darak, so'roq, buyruq, undov", "Faqat darak", "Faqat so'roq va buyruq", "Keng yoyilgan va yig'iq", "Sodda va qo'shma"] },
+    { question: "Leksikologiya nima?", answer: "Tilning lug'at boyligini o'rganuvchi bo'lim", options: ["Tilning lug'at boyligini o'rganuvchi bo'lim", "Faqat tovushlarni o'rganadi", "Faqat gap tuzilishini o'rganadi", "Faqat qadimiy tillarni o'rganadi", "Faqat yozuvni o'rganadi"] },
+  ]
+
+  return Array.from({ length: 1000 }, (_, index) => {
+    const template = baseQuestions[index % baseQuestions.length]
+
+    return {
+      id: `uzbek-${index + 1}`,
+      type: 'uzbek',
+      category: 'Ona tili',
+      question: `${template.question} (${index + 1})`,
+      answer: template.answer,
+      options: shuffle(template.options),
+    }
+  })
+}
+
+const createHistoryQuestions = () => {
+  const baseQuestions = [
+    { question: "Amir Temur qachon tug'ilgan?", answer: "1336-yilda", options: ["1336-yilda", "1370-yilda", "1405-yilda", "1390-yilda", "1300-yilda"] },
+    { question: "Mirzo Ulug'bek qaysi sohada mashhur bo'lgan?", answer: "Astronomiya va matematika", options: ["Astronomiya va matematika", "Tibbiyot", "Me'morchilik", "She'riyat", "Musiqa"] },
+    { question: "Buyuk Ipak yo'li nima?", answer: "Sharq va G'arbni bog'lovchi qadimiy savdo yo'li", options: ["Sharq va G'arbni bog'lovchi qadimiy savdo yo'li", "Faqat Ipak ishlab chiqarish yo'li", "Harbiy yurish yo'li", "Faqat O'zbekiston ichidagi yo'l", "Dengiz orqali o'tgan yo'l"] },
+    { question: "O'zbekiston Respublikasi qachon mustaqillikka erishgan?", answer: "1991-yil 31-avgust", options: ["1991-yil 31-avgust", "1990-yil 1-sentyabr", "1992-yil 8-dekabr", "1989-yil 21-oktyabr", "1991-yil 1-oktyabr"] },
+    { question: "Samarqand shahrining yoshi nechada?", answer: "2750 yildan ortiq", options: ["2750 yildan ortiq", "2000 yildan ortiq", "1500 yil", "1000 yil", "500 yil"] },
+    { question: "Buxoro nima bilan mashhur?", answer: "Qadimiy islom madaniyati va minoralari", options: ["Qadimiy islom madaniyati va minoralari", "Faqat zamonaviy binolari", "Yirik zavodlari", "Katta dengizi", "Tog'lari"] },
+    { question: "Xorazm akademiyasi qachon faoliyat yuritgan?", answer: "XI asrda (Ma'mun akademiyasi)", options: ["XI asrda (Ma'mun akademiyasi)", "IX asrda", "XIII asrda", "XV asrda", "XIX asrda"] },
+    { question: "Temuriylar davlatiga kim asos solgan?", answer: "Amir Temur", options: ["Amir Temur", "Zahiriddin Muhammad Bobur", "Mirzo Ulug'bek", "Alisher Navoiy", "Husayn Boyqaro"] },
+    { question: "Jadidchilik harakati qachon va qayerda boshlangan?", answer: "XIX asr oxiri - XX asr boshlarida Turkistonda", options: ["XIX asr oxiri - XX asr boshlarida Turkistonda", "XVIII asrda Buxoroda", "XVII asrda Xorazmda", "XVI asrda Samarqandda", "XV asrda Hirotda"] },
+    { question: "Alisher Navoiy kim?", answer: "Buyuk o'zbek shoiri, mutafakkir va davlat arbobi", options: ["Buyuk o'zbek shoiri, mutafakkir va davlat arbobi", "Faqat harbiy sarkarda", "Hukmdor", "Sayyoh", "Me'mor"] },
+    { question: "Ibn Sino G'arbda qanday nom bilan mashhur?", answer: "Avicenna", options: ["Avicenna", "Averroes", "Alhazen", "Rhazes", "Geber"] },
+    { question: "Al-Xorazmiy qaysi fanga asos solgan?", answer: "Algebra", options: ["Algebra", "Fizika", "Kimyo", "Biologiya", "Geometriya"] },
+    { question: "Qadimgi Misrda shohlar qanday atalgan?", answer: "Fir'avnlar", options: ["Fir'avnlar", "Imperatorlar", "Qirollar", "Sultonlar", "Amirlar"] },
+    { question: "Qadimgi Yunoniston nima bilan mashhur?", answer: "Olimpiada o'yinlari va demokratiya bilan", options: ["Olimpiada o'yinlari va demokratiya bilan", "Ipak yo'li bilan", "Piramidalar bilan", "Buyuk devori bilan", "Zardushtiylik bilan"] },
+    { question: "Qadimgi Rim imperiyasi qaysi qit'alarni egallagan?", answer: "Yevropa, Osiyo va Afrika", options: ["Yevropa, Osiyo va Afrika", "Faqat Yevropa", "Faqat Osiyo", "Shimoliy va Janubiy Amerika", "Avstraliya va Osiyo"] },
+    { question: "Ikkinchi jahon urushi qachon bo'lib o'tgan?", answer: "1939-1945 yillarda", options: ["1939-1945 yillarda", "1914-1918 yillarda", "1941-1945 yillarda", "1930-1940 yillarda", "1945-1950 yillarda"] },
+    { question: "Birinchi jahon urushi qachon boshlangan?", answer: "1914-yilda", options: ["1914-yilda", "1918-yilda", "1939-yilda", "1905-yilda", "1920-yilda"] },
+    { question: "Britaniya imperiyasi nima uchun mashhur bo'lgan?", answer: "Eng ko'p mustamlakaga ega eng yirik imperiya bo'lgani uchun", options: ["Eng ko'p mustamlakaga ega eng yirik imperiya bo'lgani uchun", "Faqat madaniyati uchun", "Hech qachon urushmagani uchun", "Faqat orolda joylashgani uchun", "Imperatorlari yo'qligi uchun"] },
+    { question: "Fransuz inqilobi qachon boshlangan?", answer: "1789-yilda", options: ["1789-yilda", "1812-yilda", "1700-yilda", "1900-yilda", "1650-yilda"] },
+    { question: "Sanoat inqilobi qayerda va qachon boshlangan?", answer: "XVIII asr oxirida Angliyada", options: ["XVIII asr oxirida Angliyada", "XIX asrda Fransiyada", "XX asrda AQShda", "XVII asrda Germaniyada", "XVIII asrda Rossiyada"] },
+  ]
+
+  return Array.from({ length: 1000 }, (_, index) => {
+    const template = baseQuestions[index % baseQuestions.length]
+
+    return {
+      id: `history-${index + 1}`,
+      type: 'history',
+      category: 'Tarix',
+      question: `${template.question} (${index + 1})`,
+      answer: template.answer,
+      options: shuffle(template.options),
+    }
+  })
+}
+
+const createGeographyQuestions = () => {
+  const baseQuestions = [
+    { question: "Yer nechta qavatdan iborat?", answer: "Yadro, mantiya, yer po'sti", options: ["Yadro, mantiya, yer po'sti", "Faqat yadro", "Faqat yer po'sti", "Mantiya va yadro", "Litosfera va gidrosfera"] },
+    { question: "Yer yuzida nechta materik bor?", answer: "6 ta", options: ["6 ta", "5 ta", "7 ta", "4 ta", "8 ta"] },
+    { question: "Eng katta okean qaysi?", answer: "Tinch okeani", options: ["Tinch okeani", "Atlantika okeani", "Hind okeani", "Shimoliy Muz okeani", "Janubiy okean"] },
+    { question: "O'zbekiston qaysi qit'ada joylashgan?", answer: "Osiyoda", options: ["Osiyoda", "Yevropada", "Afrikada", "Amerikada", "Avstraliyada"] },
+    { question: "O'zbekistonning poytaxti qaysi?", answer: "Toshkent", options: ["Toshkent", "Samarqand", "Buxoro", "Xiva", "Nukus"] },
+    { question: "Dunyoning eng baland tog' cho'qqisi qaysi?", answer: "Everest (Jomolungma)", options: ["Everest (Jomolungma)", "K2", "Elbrus", "Makalu", "Kilimanjaro"] },
+    { question: "Dunyodagi eng uzun daryo qaysi?", answer: "Nil (yoki Amazonka)", options: ["Nil (yoki Amazonka)", "Missisipi", "Yanszi", "Volga", "Ob"] },
+    { question: "Dunyodagi eng chuqur ko'l qaysi?", answer: "Baykal", options: ["Baykal", "Kaspiy", "Viktoriya", "Orol", "Tanganika"] },
+    { question: "Iqlim nima?", answer: "Uzoq yillik ob-havo rejimi", options: ["Uzoq yillik ob-havo rejimi", "Hozirgi kundagi ob-havo", "Faqat harorat", "Yomg'ir yog'ishi", "Shamol esishi"] },
+    { question: "Tabiat zonalari qaysilar?", answer: "Tundra, o'rmon, dasht, cho'l va boshqalar", options: ["Tundra, o'rmon, dasht, cho'l va boshqalar", "Faqat o'rmon va cho'l", "Faqat tog' va tekislik", "Iqlim va tuproq", "Daryo va ko'llar"] },
+    { question: "Eng katta cho'l qaysi?", answer: "Sahroi Kabir", options: ["Sahroi Kabir", "Qoraqum", "Qizilqum", "Gobi", "Kalahari"] },
+    { question: "Aholishunoslik (demografiya) nimani o'rganadi?", answer: "Aholi soni, tarkibi va joylashuvini", options: ["Aholi soni, tarkibi va joylashuvini", "Faqat shaharlarni", "Faqat iqtisodiyotni", "Davlat chegaralarini", "Hayvonot olamini"] },
+    { question: "Geografik xarita nima?", answer: "Yer yuzasining tekislikdagi kichiklashtirilgan tasviri", options: ["Yer yuzasining tekislikdagi kichiklashtirilgan tasviri", "Koinot surati", "Shahar rejasi", "Tog'larning rasmi", "Kitobdagi matn"] },
+    { question: "Geografik koordinatalar nimadan iborat?", answer: "Kenglik va uzunlikdan", options: ["Kenglik va uzunlikdan", "Balandlik va chuqurlikdan", "Shimol va janubdan", "Ekvator va qutbdan", "Meridian va parallel chiziqlardan emas, faqat masofadan"] },
+    { question: "Vulqon nima?", answer: "Yer ostidan magma otilib chiqadigan tog'", options: ["Yer ostidan magma otilib chiqadigan tog'", "Muzlik tog'i", "Suv ostidagi g'or", "Shamol esadigan vodiy", "Qum tepaligi"] },
+    { question: "Zilzila nima?", answer: "Yer po'stidagi tebranishlar", options: ["Yer po'stidagi tebranishlar", "Kuchli shamol", "Yomg'ir yog'ishi", "Quyosh tutilishi", "Vulqon otilishi"] },
+    { question: "O'rmon turlari qanday?", answer: "Igna bargli, keng bargli, tropik va aralash", options: ["Igna bargli, keng bargli, tropik va aralash", "Faqat mevali", "Faqat quruq", "Suv osti o'rmonlari", "Faqat tog' o'rmonlari"] },
+    { question: "Atmosfera nima?", answer: "Yerning havo qobig'i", options: ["Yerning havo qobig'i", "Yerning suv qobig'i", "Yerning tosh qobig'i", "Yer markazi", "Kosmik fazo"] },
+    { question: "Gidrosfera nima?", answer: "Yerning suv qobig'i", options: ["Yerning suv qobig'i", "Yerning havo qobig'i", "Tuproq qatlami", "Tirik mavjudotlar yashaydigan joy", "Muzliklar qismi"] },
+    { question: "Litosfera nima?", answer: "Yerning qattiq (tosh) qobig'i", options: ["Yerning qattiq (tosh) qobig'i", "Yerning suv qatlami", "Havo qatlami", "Yadro qismi", "Magma qatlami"] },
+  ]
+
+  return Array.from({ length: 1000 }, (_, index) => {
+    const template = baseQuestions[index % baseQuestions.length]
+
+    return {
+      id: `geography-${index + 1}`,
+      type: 'geography',
+      category: 'Geografiya',
+      question: `${template.question} (${index + 1})`,
+      answer: template.answer,
+      options: shuffle(template.options),
+    }
+  })
+}
+
 const logicQuestions = createLogicQuestions()
 const javascriptQuestions = createJavaScriptQuestions()
 const reactQuestions = createReactQuestions()
 const pythonQuestions = createPythonQuestions()
+const computerQuestions = createComputerQuestions()
+const cppQuestions = createCppQuestions()
+const mathQuestions = createMathQuestions()
+const physicsQuestions = createPhysicsQuestions()
+const chemistryQuestions = createChemistryQuestions()
+const uzbekLanguageQuestions = createUzbekLanguageQuestions()
+const historyQuestions = createHistoryQuestions()
+const geographyQuestions = createGeographyQuestions()
 
 const BLOCK_SIZE = 10
 
@@ -416,9 +764,17 @@ const buildQuestionBank = () => ({
   python: shuffle(pythonQuestions),
   react: shuffle(reactQuestions),
   logic: shuffle(logicQuestions),
+  computer: shuffle(computerQuestions),
+  cpp: shuffle(cppQuestions),
+  math: shuffle(mathQuestions),
+  physics: shuffle(physicsQuestions),
+  chemistry: shuffle(chemistryQuestions),
+  uzbek: shuffle(uzbekLanguageQuestions),
+  history: shuffle(historyQuestions),
+  geography: shuffle(geographyQuestions),
 })
 
-const ADMIN_ACCESS_PASSWORD = '09876543211234567890A'
+const ADMIN_ACCESS_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'Admin#2026!'
 
 export default function App() {
   const [quizQuestions, setQuizQuestions] = useState(() => buildQuestionBank())
@@ -448,6 +804,14 @@ export default function App() {
     { key: 'python', label: 'Python savollari', count: quizQuestions.python.length },
     { key: 'react', label: 'React savollari', count: quizQuestions.react.length },
     { key: 'logic', label: 'Mantiqiy savollar', count: quizQuestions.logic.length },
+    { key: 'computer', label: 'Kompyuter savollari', count: quizQuestions.computer.length },
+    { key: 'cpp', label: 'C++ savollari', count: quizQuestions.cpp.length },
+    { key: 'math', label: 'Matematika savollari', count: quizQuestions.math.length },
+    { key: 'physics', label: 'Fizika savollari', count: quizQuestions.physics.length },
+    { key: 'chemistry', label: 'Kimyo', count: quizQuestions.chemistry.length },
+    { key: 'uzbek', label: 'Ona tili', count: quizQuestions.uzbek.length },
+    { key: 'history', label: 'Tarix', count: quizQuestions.history.length },
+    { key: 'geography', label: 'Geografiya', count: quizQuestions.geography.length },
   ]
 
   const handleFormChange = (event) => {
@@ -559,7 +923,7 @@ export default function App() {
           <span className="badge">Savollar platformasi</span>
           <h1>Logic Quest Pro</h1>
           <p>
-            Kompyuter, JavaScript, React, Python va mantiqiy savollar bilan tayyorlangan zamonaviy
+            Kompyuter, JavaScript, React, Python, C++, Matematika, Fizika va mantiqiy savollar bilan tayyorlangan zamonaviy
             va interaktiv viktorina. Har bir savol faqat bir marta chiqadi va javobingiz aniq
             ko'rsatiladi.
           </p>
@@ -692,7 +1056,6 @@ export default function App() {
                       const isCorrect = option === currentQuestion.answer
                       const buttonClass = [
                         'option-btn',
-                        isSelected ? 'selected' : '',
                         selectedOption !== null && isCorrect ? 'correct' : '',
                         selectedOption !== null && isSelected && !isCorrect ? 'incorrect' : '',
                       ]

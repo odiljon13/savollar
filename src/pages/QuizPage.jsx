@@ -109,11 +109,17 @@ const QuizPage = () => {
               const isSelected = selectedOption === option;
               const isCorrect = option === currentQuestion.answer;
               let className = 'option-btn';
+
               if (selectedOption !== null) {
-                if (isCorrect) className += ' correct';
-                if (isSelected && !isCorrect) className += ' incorrect';
-                if (isSelected) className += ' selected';
+                if (isCorrect) {
+                  className += ' correct';
+                }
+
+                if (isSelected && !isCorrect) {
+                  className += ' incorrect';
+                }
               }
+
               return (
                 <button 
                   key={option} 
