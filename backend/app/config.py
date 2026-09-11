@@ -14,5 +14,5 @@ for env_path in (
 
 ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', 'admin123')
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD', '1234567890')
-DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql+psycopg2://postgres:postgres@localhost:5432/logicquest')
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./logicquest.db')
 API_PREFIX = '/api'
