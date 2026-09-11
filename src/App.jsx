@@ -1,4 +1,246 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+
+function InteractiveGlowCanvas() {
+  const canvasRef = useRef(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    let animationFrameId
+    let width = (canvas.width = window.innerWidth)
+    let height = (canvas.height = window.innerHeight)
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth
+      height = canvas.height = window.innerHeight
+    }
+    window.addEventListener('resize', handleResize)
+
+    // Pointer state with spring velocity and speed
+    const pointer = {
+      x: width / 2,
+      y: height / 2,
+      targetX: width / 2,
+      targetY: height / 2,
+      vx: 0,
+      vy: 0,
+      speed: 0,
+      active: false,
+    }
+
+    // 5 multi-color aurora silk strands
+    const strandConfigs = [
+      { color1: '#00f2fe', color2: '#4facfe', glow: 'rgba(0, 242, 254, 0.55)', phase: 0, width: 4.8 },
+      { color1: '#f355da', color2: '#7000ff', glow: 'rgba(243, 85, 218, 0.55)', phase: 1.25, width: 4.2 },
+      { color1: '#ff0844', color2: '#ffb199', glow: 'rgba(255, 8, 68, 0.5)', phase: 2.5, width: 3.8 },
+      { color1: '#00f5a0', color2: '#00d9f5', glow: 'rgba(0, 245, 160, 0.5)', phase: 3.75, width: 3.5 },
+      { color1: '#f6d365', color2: '#fda085', glow: 'rgba(246, 211, 101, 0.5)', phase: 5.0, width: 3.2 },
+    ]
+
+    const numPoints = 28
+    const strands = strandConfigs.map((cfg) => {
+      const points = []
+      for (let i = 0; i < numPoints; i++) {
+        points.push({ x: width / 2, y: height / 2 })
+      }
+      return { ...cfg, points }
+    })
+
+    let time = 0
+
+    const updatePointer = (clientX, clientY) => {
+      pointer.targetX = clientX
+      pointer.targetY = clientY
+      pointer.active = true
+    }
+
+    const onMouseMove = (e) => {
+      updatePointer(e.clientX, e.clientY)
+    }
+
+    const onMouseLeave = () => {
+      pointer.active = false
+    }
+
+    const onTouchStart = (e) => {
+      if (e.touches.length > 0) {
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY)
+      }
+    }
+
+    const onTouchMove = (e) => {
+      if (e.touches.length > 0) {
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY)
+      }
+    }
+
+    const onTouchEnd = () => {
+      pointer.active = false
+    }
+
+    window.addEventListener('mousemove', onMouseMove, { passive: true })
+    window.addEventListener('mouseleave', onMouseLeave, { passive: true })
+    window.addEventListener('touchstart', onTouchStart, { passive: true })
+    window.addEventListener('touchmove', onTouchMove, { passive: true })
+    window.addEventListener('touchend', onTouchEnd, { passive: true })
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true })
+
+    const render = () => {
+      time += 0.035
+
+      // Smooth pointer spring chase
+      const dx = pointer.targetX - pointer.x
+      const dy = pointer.targetY - pointer.y
+      pointer.vx = pointer.vx * 0.72 + dx * 0.18
+      pointer.vy = pointer.vy * 0.72 + dy * 0.18
+      pointer.x += pointer.vx
+      pointer.y += pointer.vy
+      pointer.speed = Math.hypot(pointer.vx, pointer.vy)
+
+      // Gentle floating when user is idle
+      if (!pointer.active) {
+        pointer.targetX = width / 2 + Math.sin(time * 0.6) * (width * 0.28)
+        pointer.targetY = height / 2 + Math.cos(time * 0.8) * (height * 0.2)
+      }
+
+      // Smooth dark decay to create silky motion dissolution
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)'
+      ctx.fillRect(0, 0, width, height)
+
+      ctx.globalCompositeOperation = 'lighter'
+
+      // Soft luminous spotlight centered around pointer
+      const spotRadius = pointer.active ? 200 : 140
+      const spotGrad = ctx.createRadialGradient(
+        pointer.x,
+        pointer.y,
+        0,
+        pointer.x,
+        pointer.y,
+        spotRadius
+      )
+      spotGrad.addColorStop(0, 'rgba(112, 0, 255, 0.35)')
+      spotGrad.addColorStop(0.3, 'rgba(0, 242, 254, 0.22)')
+      spotGrad.addColorStop(0.65, 'rgba(243, 85, 218, 0.09)')
+      spotGrad.addColorStop(1, 'transparent')
+
+      ctx.fillStyle = spotGrad
+      ctx.beginPath()
+      ctx.arc(pointer.x, pointer.y, spotRadius, 0, Math.PI * 2)
+      ctx.fill()
+
+      // Update and render each undulating aurora silk strand
+      strands.forEach((strand) => {
+        const points = strand.points
+
+        // Head joint follows pointer with harmonic offset
+        const headOffsetAngle = time * 2 + strand.phase
+        const headOffsetDist = Math.min(pointer.speed * 1.5, 22) + Math.sin(time + strand.phase) * 6
+        const targetHeadX = pointer.x + Math.cos(headOffsetAngle) * headOffsetDist
+        const targetHeadY = pointer.y + Math.sin(headOffsetAngle) * headOffsetDist
+
+        points[0].x += (targetHeadX - points[0].x) * 0.45
+        points[0].y += (targetHeadY - points[0].y) * 0.45
+
+        // Trailing joints with spring inertia and wave harmonics
+        for (let i = 1; i < numPoints; i++) {
+          const prev = points[i - 1]
+          const curr = points[i]
+
+          const wave = Math.sin(time * 2.5 - i * 0.32 + strand.phase) * (4 + (i / numPoints) * 14)
+          const perpAngle = Math.atan2(curr.y - prev.y, curr.x - prev.x) + Math.PI / 2
+          const waveX = Math.cos(perpAngle) * wave * 0.32
+          const waveY = Math.sin(perpAngle) * wave * 0.32
+
+          curr.x += (prev.x - curr.x) * 0.35 + waveX
+          curr.y += (prev.y - curr.y) * 0.35 + waveY
+        }
+
+        // Draw smooth bezier curve through points
+        ctx.save()
+        ctx.beginPath()
+        ctx.moveTo(points[0].x, points[0].y)
+
+        for (let i = 1; i < numPoints - 1; i++) {
+          const midX = (points[i].x + points[i + 1].x) / 2
+          const midY = (points[i].y + points[i + 1].y) / 2
+          ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY)
+        }
+
+        // Ribbon gradient stroke
+        const grad = ctx.createLinearGradient(
+          points[0].x,
+          points[0].y,
+          points[numPoints - 1].x,
+          points[numPoints - 1].y
+        )
+        grad.addColorStop(0, strand.color1)
+        grad.addColorStop(0.5, strand.color2)
+        grad.addColorStop(1, 'transparent')
+
+        ctx.strokeStyle = grad
+        ctx.lineWidth = strand.width
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        ctx.shadowColor = strand.glow
+        ctx.shadowBlur = 18
+        ctx.stroke()
+        ctx.restore()
+      })
+
+      // Core chromatic glowing orb at pointer
+      if (pointer.active) {
+        ctx.save()
+        const coreGrad = ctx.createRadialGradient(
+          pointer.x,
+          pointer.y,
+          0,
+          pointer.x,
+          pointer.y,
+          36
+        )
+        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
+        coreGrad.addColorStop(0.3, 'rgba(0, 242, 254, 0.8)')
+        coreGrad.addColorStop(0.65, 'rgba(243, 85, 218, 0.4)')
+        coreGrad.addColorStop(1, 'transparent')
+
+        ctx.fillStyle = coreGrad
+        ctx.shadowColor = 'rgba(0, 242, 254, 1)'
+        ctx.shadowBlur = 22
+        ctx.beginPath()
+        ctx.arc(pointer.x, pointer.y, 36, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      }
+
+      ctx.globalCompositeOperation = 'source-over'
+      animationFrameId = requestAnimationFrame(render)
+    }
+
+    // Initial background fill
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, width, height)
+
+    render()
+
+    return () => {
+      cancelAnimationFrame(animationFrameId)
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseleave', onMouseLeave)
+      window.removeEventListener('touchstart', onTouchStart)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [])
+
+  return <canvas ref={canvasRef} className="interactive-glow-canvas" />
+}
+
 
 const randomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min
 
@@ -783,11 +1025,23 @@ export default function App() {
   const [selectedOption, setSelectedOption] = useState(null)
   const [showResult, setShowResult] = useState(false)
   const [isRegistered, setIsRegistered] = useState(false)
+
+  useEffect(() => {
+    try {
+      localStorage.removeItem('lqp_registered')
+    } catch {}
+  }, [])
   const [showAdminPanel, setShowAdminPanel] = useState(false)
   const [adminAuthenticated, setAdminAuthenticated] = useState(false)
   const [adminPasswordInput, setAdminPasswordInput] = useState('')
   const [adminError, setAdminError] = useState('')
-  const [users, setUsers] = useState([])
+  const [users, setUsers] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('lqp_users')) || []
+    } catch {
+      return []
+    }
+  })
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -800,18 +1054,18 @@ export default function App() {
   const currentBlock = Math.floor(currentIndex / BLOCK_SIZE) + 1
   const currentBlockProgress = ((currentIndex % BLOCK_SIZE) + 1) / BLOCK_SIZE * 100
   const categoryCards = [
-    { key: 'javascript', label: 'JavaScript savollari', count: quizQuestions.javascript.length },
-    { key: 'python', label: 'Python savollari', count: quizQuestions.python.length },
-    { key: 'react', label: 'React savollari', count: quizQuestions.react.length },
-    { key: 'logic', label: 'Mantiqiy savollar', count: quizQuestions.logic.length },
-    { key: 'computer', label: 'Kompyuter savollari', count: quizQuestions.computer.length },
-    { key: 'cpp', label: 'C++ savollari', count: quizQuestions.cpp.length },
-    { key: 'math', label: 'Matematika savollari', count: quizQuestions.math.length },
-    { key: 'physics', label: 'Fizika savollari', count: quizQuestions.physics.length },
-    { key: 'chemistry', label: 'Kimyo', count: quizQuestions.chemistry.length },
-    { key: 'uzbek', label: 'Ona tili', count: quizQuestions.uzbek.length },
-    { key: 'history', label: 'Tarix', count: quizQuestions.history.length },
-    { key: 'geography', label: 'Geografiya', count: quizQuestions.geography.length },
+    { key: 'javascript', label: 'JavaScript', icon: '⚡', count: quizQuestions.javascript.length },
+    { key: 'python', label: 'Python', icon: '🐍', count: quizQuestions.python.length },
+    { key: 'react', label: 'React', icon: '⚛️', count: quizQuestions.react.length },
+    { key: 'logic', label: 'Mantiqiy', icon: '🧠', count: quizQuestions.logic.length },
+    { key: 'computer', label: 'Kompyuter', icon: '💻', count: quizQuestions.computer.length },
+    { key: 'cpp', label: 'C++', icon: '🧩', count: quizQuestions.cpp.length },
+    { key: 'math', label: 'Matematika', icon: '📐', count: quizQuestions.math.length },
+    { key: 'physics', label: 'Fizika', icon: '🧲', count: quizQuestions.physics.length },
+    { key: 'chemistry', label: 'Kimyo', icon: '🧪', count: quizQuestions.chemistry.length },
+    { key: 'uzbek', label: 'Ona tili', icon: '📝', count: quizQuestions.uzbek.length },
+    { key: 'history', label: 'Tarix', icon: '📜', count: quizQuestions.history.length },
+    { key: 'geography', label: 'Geografiya', icon: '🌍', count: quizQuestions.geography.length },
   ]
 
   const handleFormChange = (event) => {
@@ -826,22 +1080,25 @@ export default function App() {
       return
     }
 
-    setUsers((previous) => [
-      {
-        id: Date.now(),
-        firstName: formData.firstName.trim(),
-        lastName: formData.lastName.trim(),
-        district: formData.district.trim(),
-        adminStatus: '0',
-        password: '',
-      },
-      ...previous,
-    ])
+    const newUser = {
+      id: Date.now(),
+      firstName: formData.firstName.trim(),
+      lastName: formData.lastName.trim(),
+      district: formData.district.trim(),
+      adminStatus: '0',
+      password: '',
+    }
 
+    const updatedUsers = [newUser, ...users]
+    setUsers(updatedUsers)
     setIsRegistered(true)
     setShowAdminPanel(false)
     setAdminAuthenticated(false)
     setAdminError('')
+
+    try {
+      localStorage.setItem('lqp_users', JSON.stringify(updatedUsers))
+    } catch {}
 
     setFormData({
       firstName: '',
@@ -850,6 +1107,13 @@ export default function App() {
       adminStatus: '0',
       adminPassword: '',
     })
+  }
+
+  const handleLogout = () => {
+    setIsRegistered(false)
+    try {
+      localStorage.removeItem('lqp_registered')
+    } catch {}
   }
 
   const goToNextQuestion = () => {
@@ -916,41 +1180,85 @@ export default function App() {
     }
   }
 
+  const optionLetters = ['A', 'B', 'C', 'D', 'E', 'F']
+
   return (
     <div className="app-shell">
+      <InteractiveGlowCanvas />
       <div className="container">
         <header className="hero-card">
-          <span className="badge">Savollar platformasi</span>
-          <h1>Logic Quest Pro</h1>
+          <div className="hero-top-row">
+            <span className="badge">✨ Intellektual Platforma</span>
+            {isRegistered && users.length > 0 ? (
+              <div className="user-greeting-chip">
+                <span className="user-avatar-badge">{users[0].firstName.charAt(0).toUpperCase()}</span>
+                <span className="user-name-text">{users[0].firstName} {users[0].lastName}</span>
+                <span className="user-district-tag">📍 {users[0].district}</span>
+                <button
+                  type="button"
+                  className="switch-user-btn"
+                  onClick={handleLogout}
+                  title="Yangi ishtirokchi sifatida ro'yxatdan o'tish"
+                >
+                  Ro’yxatdan o’tish
+                </button>
+              </div>
+            ) : (
+              <span className="badge">📝 Ro’yxatdan o’tish zarur</span>
+            )}
+          </div>
+          <h1>Logic Quest <span className="highlight-text">PRO</span></h1>
           <p>
-            Kompyuter, JavaScript, React, Python, C++, Matematika, Fizika va mantiqiy savollar bilan tayyorlangan zamonaviy
-            va interaktiv viktorina. Har bir savol faqat bir marta chiqadi va javobingiz aniq
-            ko'rsatiladi.
+            Dasturlash, aniq va gumanitar fanlar hamda mantiqiy fikrlash bo'yicha 10 000 dan ortiq
+            saralangan savollar bilan bilimingizni sinang va yuqori natijalarga erishing!
           </p>
+          <div className="hero-pills">
+            <div className="pill-item"><span>⚡</span> 10 000+ Sara Savollar</div>
+            <div className="pill-item"><span>📚</span> 12 ta Fan va Yo'nalish</div>
+            <div className="pill-item"><span>🎯</span> Har 10 ta savolda yangi bosqich</div>
+          </div>
         </header>
 
         <section className="dashboard-grid">
           {!isRegistered ? (
             <div className="register-card">
-              <h2>Ro’yxatdan o’tish</h2>
-              <p className="subtle-text">Admin panelga kirish faqat maxsus parol orqali mumkin.</p>
+              <div className="card-heading-box">
+                <div className="header-icon-circle">📝</div>
+                <div>
+                  <h2>Ro’yxatdan o’tish</h2>
+                  <p className="subtle-text">Viktorinani boshlash uchun ma'lumotlaringizni kiriting</p>
+                </div>
+              </div>
+
               <form className="register-form" onSubmit={handleRegister}>
                 <label className="field">
-                  <span>Ism</span>
-                  <input name="firstName" value={formData.firstName} onChange={handleFormChange} placeholder="Ismingiz" />
+                  <span>Ismingiz</span>
+                  <div className="input-with-icon">
+                    <span className="field-icon">👤</span>
+                    <input name="firstName" value={formData.firstName} onChange={handleFormChange} placeholder="Ismingizni kiriting" required />
+                  </div>
                 </label>
 
                 <label className="field">
-                  <span>Familiya</span>
-                  <input name="lastName" value={formData.lastName} onChange={handleFormChange} placeholder="Familiyangiz" />
+                  <span>Familiyangiz</span>
+                  <div className="input-with-icon">
+                    <span className="field-icon">👥</span>
+                    <input name="lastName" value={formData.lastName} onChange={handleFormChange} placeholder="Familiyangizni kiriting" required />
+                  </div>
                 </label>
 
                 <label className="field">
-                  <span>Tuman</span>
-                  <input name="district" value={formData.district} onChange={handleFormChange} placeholder="Tuman nomi" />
+                  <span>Tuman / Shahar</span>
+                  <div className="input-with-icon">
+                    <span className="field-icon">📍</span>
+                    <input name="district" value={formData.district} onChange={handleFormChange} placeholder="Masalan: Chilonzor tumani" required />
+                  </div>
                 </label>
 
-                <button type="submit" className="submit-btn">Ro’yxatdan o’tish</button>
+                <button type="submit" className="submit-btn">
+                  <span>Ro’yxatdan o’tish va Boshlash</span>
+                  <span className="btn-arrow">→</span>
+                </button>
               </form>
             </div>
           ) : null}
@@ -958,21 +1266,30 @@ export default function App() {
           {isRegistered ? (
             <div className="admin-card">
               <div className="admin-header-row">
-                <h2>Adminga kirish</h2>
-                <button className="access-btn" onClick={openAdminPanel}>
-                  {showAdminPanel ? 'Admin panelni yopish' : 'Admin panelga kirish'}
-                </button>
+                <div className="admin-title-area">
+                  <span className="admin-icon-pill">🔐</span>
+                  <h2>Adminga kirish</h2>
+                </div>
+                <div className="admin-btn-group">
+                  <button className="access-btn" onClick={openAdminPanel}>
+                    {showAdminPanel ? 'Yopish' : 'Admin panel'}
+                  </button>
+                  <button className="logout-btn" onClick={handleLogout} title="Boshqa nomdan ro'yxatdan o'tish">
+                    Chiqish
+                  </button>
+                </div>
               </div>
 
               {showAdminPanel && !adminAuthenticated ? (
                 <form className="admin-login-form" onSubmit={handleAdminLogin}>
                   <label className="field">
-                    <span>Parol</span>
+                    <span>Admin paroli</span>
                     <input
                       type="password"
                       value={adminPasswordInput}
                       onChange={(event) => setAdminPasswordInput(event.target.value)}
                       placeholder="Admin parolini kiriting"
+                      required
                     />
                   </label>
                   {adminError ? <p className="error-text">{adminError}</p> : null}
@@ -999,9 +1316,10 @@ export default function App() {
                     ) : (
                       users.map((user) => (
                         <div key={user.id} className="user-row">
-                          <div>
+                          <div className="user-avatar-sm">{user.firstName.charAt(0).toUpperCase()}</div>
+                          <div className="user-details">
                             <strong>{user.firstName} {user.lastName}</strong>
-                            <span>{user.district}</span>
+                            <span>📍 {user.district}</span>
                           </div>
                         </div>
                       ))
@@ -1016,9 +1334,15 @@ export default function App() {
         <main className="quiz-card">
           {!isRegistered ? (
             <div className="register-prompt">
+              <div className="prompt-shield-icon">🔒</div>
               <span className="badge">Boshlash uchun</span>
               <h2>Avval ro’yxatdan o’ting</h2>
-              <p>Ro’yxatdan o’tganingizdan keyin savollar ko’rsatiladi.</p>
+              <p>Chap tarafdagi formani to'ldirib, "Ro'yxatdan o'tish" tugmasini bosing. Barcha fanlar va 10 000+ savollar darhol ochiladi.</p>
+              <div className="prompt-highlights">
+                <div className="highlight-item"><span>✨</span> Barcha 12 ta fandan 10 000+ savollar bazasi</div>
+                <div className="highlight-item"><span>🎯</span> Har 10 ta savolda qiyinlashib boruvchi bosqichlar</div>
+                <div className="highlight-item"><span>⚡</span> Tezkor natijalar va to'g'ri javoblar ko'rsatgichi</div>
+              </div>
             </div>
           ) : (
             <>
@@ -1030,8 +1354,9 @@ export default function App() {
                     className={`category-chip ${selectedCategory === category.key ? 'active' : ''}`}
                     onClick={() => handleCategoryChange(category.key)}
                   >
-                    <span>{category.label}</span>
-                    <strong>{category.count}</strong>
+                    <span className="cat-icon">{category.icon}</span>
+                    <span className="cat-label">{category.label}</span>
+                    <strong className="cat-count">{category.count}</strong>
                   </button>
                 ))}
               </div>
@@ -1039,7 +1364,9 @@ export default function App() {
               {!showResult ? (
                 <>
                   <div className="progress-head">
-                    <div className="progress-caption">Bosqich {currentBlock} • Har 10 ta savol qiyinlashadi</div>
+                    <div className="progress-caption">
+                      <span>🚀</span> Bosqich {currentBlock} • Har 10 ta savol qiyinlashadi
+                    </div>
                   </div>
                   <div className="progress-track">
                     <div className="progress-bar" style={{ width: `${currentBlockProgress}%` }} />
@@ -1051,11 +1378,13 @@ export default function App() {
                   </div>
 
                   <div className="options-grid">
-                    {currentQuestion.options.map((option) => {
+                    {currentQuestion.options.map((option, idx) => {
                       const isSelected = selectedOption === option
                       const isCorrect = option === currentQuestion.answer
+                      const letter = optionLetters[idx] || `${idx + 1}`
                       const buttonClass = [
                         'option-btn',
+                        isSelected ? 'selected' : '',
                         selectedOption !== null && isCorrect ? 'correct' : '',
                         selectedOption !== null && isSelected && !isCorrect ? 'incorrect' : '',
                       ]
@@ -1069,7 +1398,10 @@ export default function App() {
                           onClick={() => handleAnswer(option)}
                           disabled={selectedOption !== null}
                         >
-                          {option}
+                          <span className="option-letter-badge">{letter}</span>
+                          <span className="option-text">{option}</span>
+                          {selectedOption !== null && isCorrect && <span className="option-mark">✓</span>}
+                          {selectedOption !== null && isSelected && !isCorrect && <span className="option-mark">✕</span>}
                         </button>
                       )
                     })}
@@ -1078,25 +1410,32 @@ export default function App() {
                   {selectedOption !== null ? (
                     <div className="feedback-box">
                       <div className={`feedback-message ${selectedOption === currentQuestion.answer ? 'success' : 'error'}`}>
-                        {selectedOption === currentQuestion.answer
-                          ? 'To\'g\'ri javob! Keyingisi tugmasini bosing.'
-                          : `Noto\'g\'ri javob. To\'g\'ri javob: ${currentQuestion.answer}`}
+                        <span className="fb-icon">{selectedOption === currentQuestion.answer ? '🎉' : '❌'}</span>
+                        <div className="fb-text">
+                          <strong>{selectedOption === currentQuestion.answer ? 'To\'g\'ri javob!' : 'Noto\'g\'ri javob!'}</strong>
+                          <span>{selectedOption === currentQuestion.answer ? 'Barakalla! Keyingi savolga o\'tishingiz mumkin.' : `To'g'ri javob: ${currentQuestion.answer}`}</span>
+                        </div>
                       </div>
                       <div className="next-action">
-                        <button className="next-btn" onClick={goToNextQuestion}>Keyingisi</button>
+                        <button className="next-btn" onClick={goToNextQuestion}>
+                          <span>Keyingisi</span>
+                          <span className="key-hint">Enter ↵</span>
+                        </button>
                       </div>
                     </div>
                   ) : null}
                 </>
               ) : (
                 <div className="result-box">
+                  <div className="trophy-display">🏆</div>
                   <span className="badge">Natija</span>
-                  <h2>Test tugadi</h2>
+                  <h2>Test Yakunlandi!</h2>
                   <p>
-                    Savollar tugadi. Qayta boshlash orqali yana yangi random ketma-ketlikni ko'rishingiz
-                    mumkin.
+                    Ushbu bo'limdagi savollarni muvaffaqiyatli yakunladingiz. Qayta boshlash orqali yangi random ketma-ketlikdagi savollarni ko'rishingiz mumkin.
                   </p>
-                  <button className="reset-btn" onClick={resetQuiz}>Qayta boshlash</button>
+                  <button className="reset-btn" onClick={resetQuiz}>
+                    <span>🔄 Qayta boshlash</span>
+                  </button>
                 </div>
               )}
             </>
