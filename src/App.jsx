@@ -19,249 +19,226 @@ function InteractiveGlowCanvas() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Primary pointer and physics-based lagging secondary follower
+    // Smooth pointer state with spring interpolation
     const pointer = {
-      x: width / 2,
-      y: height / 2,
-      targetX: width / 2,
-      targetY: height / 2,
+      x: width * 0.5,
+      y: height * 0.5,
+      targetX: width * 0.5,
+      targetY: height * 0.5,
       active: false,
-      lastActiveTime: Date.now(),
+      lastMoved: Date.now(),
     }
 
-    const follower = {
-      x: width / 2,
-      y: height / 2,
-    }
+    // Interactive fluid aurora nodes (Apple / Stripe AAA luxury standard)
+    const nodes = [
+      {
+        baseX: width * 0.25,
+        baseY: height * 0.3,
+        x: width * 0.25,
+        y: height * 0.3,
+        radius: 460,
+        hue: 260, // Electric Violet / Purple
+        speed: 0.0008,
+        offset: 0,
+        pull: 0.045,
+        orbitX: 180,
+        orbitY: 130,
+      },
+      {
+        baseX: width * 0.75,
+        baseY: height * 0.35,
+        x: width * 0.75,
+        y: height * 0.35,
+        radius: 500,
+        hue: 190, // Cyber Cyan / Azure
+        speed: 0.0011,
+        offset: 2.1,
+        pull: 0.04,
+        orbitX: 200,
+        orbitY: 150,
+      },
+      {
+        baseX: width * 0.5,
+        baseY: height * 0.7,
+        x: width * 0.5,
+        y: height * 0.7,
+        radius: 480,
+        hue: 320, // Neon Fuchsia / Magenta
+        speed: 0.0009,
+        offset: 4.2,
+        pull: 0.035,
+        orbitX: 220,
+        orbitY: 140,
+      },
+      {
+        baseX: width * 0.5,
+        baseY: height * 0.45,
+        x: width * 0.5,
+        y: height * 0.45,
+        radius: 420,
+        hue: 220, // Deep Royal Sapphire
+        speed: 0.0014,
+        offset: 1.2,
+        pull: 0.06,
+        orbitX: 150,
+        orbitY: 120,
+      },
+    ]
 
-    // Laser trail points - zero scatter, continuous connected ribbon
-    let points = []
-    let globalHue = 200
-    let time = 0
-    let lastPoint = null
+    let pulses = []
+    let globalHueShift = 0
 
-    const addPoint = (x, y) => {
-      globalHue = (globalHue + 1.2) % 360
-      pointer.targetX = x
-      pointer.targetY = y
+    const onPointerMove = (clientX, clientY) => {
+      pointer.targetX = clientX
+      pointer.targetY = clientY
       pointer.active = true
-      pointer.lastActiveTime = Date.now()
-
-      // If distance from last point is significant, interpolate to ensure unbroken silky beam
-      if (lastPoint) {
-        const dx = x - lastPoint.x
-        const dy = y - lastPoint.y
-        const dist = Math.hypot(dx, dy)
-        if (dist > 18) {
-          const steps = Math.min(Math.floor(dist / 14), 6)
-          for (let s = 1; s <= steps; s++) {
-            const t = s / (steps + 1)
-            points.push({
-              x: lastPoint.x + dx * t,
-              y: lastPoint.y + dy * t,
-              hue: globalHue,
-              alpha: 1.0,
-              // Slow decay: stays visible for ~6-8 seconds without scattering
-              decay: 0.0038,
-            })
-          }
-        }
-      }
-
-      points.push({
-        x,
-        y,
-        hue: globalHue,
-        alpha: 1.0,
-        decay: 0.0038,
-      })
-
-      lastPoint = { x, y }
-
-      // Cap points to prevent memory accumulation while keeping rich persistent path
-      if (points.length > 220) {
-        points.splice(0, points.length - 220)
-      }
+      pointer.lastMoved = Date.now()
     }
 
     const onMouseMove = (e) => {
-      addPoint(e.clientX, e.clientY)
-    }
-
-    const onMouseLeave = () => {
-      pointer.active = false
-      lastPoint = null
+      onPointerMove(e.clientX, e.clientY)
     }
 
     const onTouchStart = (e) => {
       if (e.touches.length > 0) {
-        const touch = e.touches[0]
-        lastPoint = null
-        addPoint(touch.clientX, touch.clientY)
+        onPointerMove(e.touches[0].clientX, e.touches[0].clientY)
+        pulses.push({
+          x: e.touches[0].clientX,
+          y: e.touches[0].clientY,
+          radius: 10,
+          maxRadius: 180,
+          alpha: 0.8,
+          hue: (210 + globalHueShift) % 360,
+        })
       }
     }
 
     const onTouchMove = (e) => {
       if (e.touches.length > 0) {
-        const touch = e.touches[0]
-        addPoint(touch.clientX, touch.clientY)
+        onPointerMove(e.touches[0].clientX, e.touches[0].clientY)
       }
     }
 
-    const onTouchEnd = () => {
+    const onMouseDown = (e) => {
+      pulses.push({
+        x: e.clientX,
+        y: e.clientY,
+        radius: 10,
+        maxRadius: 200,
+        alpha: 0.75,
+        hue: (210 + globalHueShift) % 360,
+      })
+    }
+
+    const onPointerLeave = () => {
       pointer.active = false
-      lastPoint = null
     }
 
     window.addEventListener('mousemove', onMouseMove, { passive: true })
-    window.addEventListener('mouseleave', onMouseLeave, { passive: true })
+    window.addEventListener('mousedown', onMouseDown, { passive: true })
+    window.addEventListener('mouseleave', onPointerLeave, { passive: true })
     window.addEventListener('touchstart', onTouchStart, { passive: true })
     window.addEventListener('touchmove', onTouchMove, { passive: true })
-    window.addEventListener('touchend', onTouchEnd, { passive: true })
-    window.addEventListener('touchcancel', onTouchEnd, { passive: true })
+    window.addEventListener('touchend', onPointerLeave, { passive: true })
+    window.addEventListener('touchcancel', onPointerLeave, { passive: true })
 
-    const render = () => {
-      time += 0.02
+    let lastTime = performance.now()
 
-      const isUserInactive = Date.now() - pointer.lastActiveTime > 2500
+    const render = (currentTime) => {
+      const delta = Math.min(currentTime - lastTime, 64)
+      lastTime = currentTime
 
-      // Smooth interpolation for primary pointer and lagging follower
-      if (pointer.active) {
-        pointer.x += (pointer.targetX - pointer.x) * 0.18
-        pointer.y += (pointer.targetY - pointer.y) * 0.18
-      } else if (isUserInactive) {
-        // Majestic ambient floating orbit when user is reading or idle
-        const orbitX = width / 2 + Math.cos(time * 0.6) * (width * 0.28)
-        const orbitY = height / 2 + Math.sin(time * 0.9) * (height * 0.18)
-        pointer.x += (orbitX - pointer.x) * 0.04
-        pointer.y += (orbitY - pointer.y) * 0.04
-        globalHue = (globalHue + 0.35) % 360
-      }
+      globalHueShift = (globalHueShift + delta * 0.012) % 360
 
-      // Harmonic secondary follower creates dual-tone chromatic aberration depth
-      follower.x += (pointer.x - follower.x) * 0.08
-      follower.y += (pointer.y - follower.y) * 0.08
+      // Pointer spring physics
+      pointer.x += (pointer.targetX - pointer.x) * 0.1
+      pointer.y += (pointer.targetY - pointer.y) * 0.1
 
-      // 1. Clear with true pitch-black background
+      // 1. Pure Pitch Black Background
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, width, height)
 
+      // Use lighter blending for luminous, clean liquid light
       ctx.globalCompositeOperation = 'lighter'
 
-      // 2. Secondary lagging ambient chromatic aura (dual-tone harmonic shift)
-      const secRadius = 380
-      const secGrad = ctx.createRadialGradient(
-        follower.x,
-        follower.y,
-        0,
-        follower.x,
-        follower.y,
-        secRadius
-      )
-      const secHue = (globalHue + 75) % 360
-      secGrad.addColorStop(0, `hsla(${secHue}, 100%, 65%, 0.28)`)
-      secGrad.addColorStop(0.35, `hsla(${(secHue + 40) % 360}, 95%, 55%, 0.12)`)
-      secGrad.addColorStop(0.7, `hsla(${(secHue + 80) % 360}, 90%, 45%, 0.035)`)
-      secGrad.addColorStop(1, 'transparent')
+      // 2. Liquid Aurora Mesh nodes (organic fluid drift + magnetic cursor attraction)
+      const isIdle = Date.now() - pointer.lastMoved > 2500
 
-      ctx.fillStyle = secGrad
-      ctx.beginPath()
-      ctx.arc(follower.x, follower.y, secRadius, 0, Math.PI * 2)
-      ctx.fill()
+      nodes.forEach((node, i) => {
+        // Natural harmonic Lissajous drift
+        const t = currentTime * node.speed + node.offset
+        const naturalX = (width * (i === 0 ? 0.3 : i === 1 ? 0.7 : 0.5)) + Math.sin(t * 1.3) * node.orbitX
+        const naturalY = (height * (i === 0 ? 0.35 : i === 1 ? 0.4 : i === 2 ? 0.7 : 0.5)) + Math.cos(t * 0.9) * node.orbitY
 
-      // 3. Primary interactive chromatic aura (wide, rich, generous size)
-      const primRadius = 420
-      const primGrad = ctx.createRadialGradient(
-        pointer.x,
-        pointer.y,
-        0,
-        pointer.x,
-        pointer.y,
-        primRadius
-      )
-      primGrad.addColorStop(0, `hsla(${globalHue}, 100%, 72%, 0.42)`)
-      primGrad.addColorStop(0.3, `hsla(${(globalHue + 40) % 360}, 100%, 62%, 0.2)`)
-      primGrad.addColorStop(0.65, `hsla(${(globalHue + 85) % 360}, 95%, 52%, 0.06)`)
-      primGrad.addColorStop(1, 'transparent')
-
-      ctx.fillStyle = primGrad
-      ctx.beginPath()
-      ctx.arc(pointer.x, pointer.y, primRadius, 0, Math.PI * 2)
-      ctx.fill()
-
-      // 4. Update and render the continuous non-scattering Laser Ribbon
-      // Age points smoothly (fade in place without moving or scattering)
-      for (let i = points.length - 1; i >= 0; i--) {
-        points[i].alpha -= points[i].decay
-        if (points[i].alpha <= 0) {
-          points.splice(i, 1)
+        // Magnetic attraction towards pointer
+        if (pointer.active || !isIdle) {
+          const targetX = naturalX + (pointer.x - naturalX) * node.pull * 2.8
+          const targetY = naturalY + (pointer.y - naturalY) * node.pull * 2.8
+          node.x += (targetX - node.x) * 0.06
+          node.y += (targetY - node.y) * 0.06
+        } else {
+          node.x += (naturalX - node.x) * 0.04
+          node.y += (naturalY - node.y) * 0.04
         }
-      }
 
-      if (points.length > 2) {
-        // Render 3 distinct glowing laser layers along the drawn path:
-        // A. Wide radiant ambient neon bloom (80px)
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
+        const currentHue = (node.hue + globalHueShift) % 360
+        const grad = ctx.createRadialGradient(
+          node.x,
+          node.y,
+          0,
+          node.x,
+          node.y,
+          node.radius
+        )
+        grad.addColorStop(0, `hsla(${currentHue}, 95%, 60%, 0.32)`)
+        grad.addColorStop(0.35, `hsla(${(currentHue + 30) % 360}, 90%, 50%, 0.14)`)
+        grad.addColorStop(0.7, `hsla(${(currentHue + 60) % 360}, 85%, 40%, 0.035)`)
+        grad.addColorStop(1, 'transparent')
 
-        for (let i = 0; i < points.length - 1; i++) {
-          const p1 = points[i]
-          const p2 = points[i + 1]
-          const avgAlpha = (p1.alpha + p2.alpha) * 0.5
-          const avgHue = (p1.hue + p2.hue) * 0.5
+        ctx.fillStyle = grad
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2)
+        ctx.fill()
+      })
 
-          // Wide outer glow
-          ctx.beginPath()
-          ctx.moveTo(p1.x, p1.y)
-          ctx.lineTo(p2.x, p2.y)
-          ctx.lineWidth = 76 * avgAlpha
-          ctx.strokeStyle = `hsla(${avgHue}, 100%, 60%, ${avgAlpha * 0.18})`
-          ctx.stroke()
-
-          // Vibrant mid electric beam
-          ctx.beginPath()
-          ctx.moveTo(p1.x, p1.y)
-          ctx.lineTo(p2.x, p2.y)
-          ctx.lineWidth = 28 * avgAlpha
-          ctx.strokeStyle = `hsla(${(avgHue + 20) % 360}, 100%, 70%, ${avgAlpha * 0.5})`
-          ctx.stroke()
-
-          // Razor-sharp hyper-bright white/cyan laser core
-          ctx.beginPath()
-          ctx.moveTo(p1.x, p1.y)
-          ctx.lineTo(p2.x, p2.y)
-          ctx.lineWidth = 6 * avgAlpha
-          ctx.strokeStyle = `rgba(255, 255, 255, ${avgAlpha * 0.95})`
-          ctx.stroke()
-        }
-      }
-
-      // 5. Focal radiant energy orb directly under active pointer / touch
-      const orbRadius = 48
-      const orbGrad = ctx.createRadialGradient(
+      // 3. Magnetic cursor spotlight (luxurious, silky ambient glow directly where the user navigates)
+      const spotRadius = 340
+      const spotHue = (205 + globalHueShift) % 360
+      const spotGrad = ctx.createRadialGradient(
         pointer.x,
         pointer.y,
         0,
         pointer.x,
         pointer.y,
-        orbRadius
+        spotRadius
       )
-      orbGrad.addColorStop(0, 'rgba(255, 255, 255, 1)')
-      orbGrad.addColorStop(0.28, `hsla(${globalHue}, 100%, 78%, 0.9)`)
-      orbGrad.addColorStop(0.65, `hsla(${(globalHue + 40) % 360}, 100%, 60%, 0.35)`)
-      orbGrad.addColorStop(1, 'transparent')
+      spotGrad.addColorStop(0, `hsla(${spotHue}, 100%, 75%, 0.35)`)
+      spotGrad.addColorStop(0.3, `hsla(${(spotHue + 35) % 360}, 95%, 60%, 0.15)`)
+      spotGrad.addColorStop(0.7, `hsla(${(spotHue + 75) % 360}, 90%, 45%, 0.03)`)
+      spotGrad.addColorStop(1, 'transparent')
 
-      ctx.fillStyle = orbGrad
+      ctx.fillStyle = spotGrad
       ctx.beginPath()
-      ctx.arc(pointer.x, pointer.y, orbRadius, 0, Math.PI * 2)
+      ctx.arc(pointer.x, pointer.y, spotRadius, 0, Math.PI * 2)
       ctx.fill()
 
-      // 6. Delicate precision ring around cursor
-      ctx.beginPath()
-      ctx.arc(pointer.x, pointer.y, 22, 0, Math.PI * 2)
-      ctx.lineWidth = 1.8
-      ctx.strokeStyle = `hsla(${globalHue}, 100%, 85%, 0.7)`
-      ctx.stroke()
+      // 4. Soft click / tap shockwave pulses
+      for (let i = pulses.length - 1; i >= 0; i--) {
+        const p = pulses[i]
+        p.radius += (p.maxRadius - p.radius) * 0.08
+        p.alpha -= 0.024
+
+        if (p.alpha <= 0) {
+          pulses.splice(i, 1)
+          continue
+        }
+
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
+        ctx.lineWidth = 2.2 * p.alpha
+        ctx.strokeStyle = `hsla(${p.hue}, 100%, 75%, ${p.alpha * 0.7})`
+        ctx.stroke()
+      }
 
       ctx.globalCompositeOperation = 'source-over'
       animationFrameId = requestAnimationFrame(render)
@@ -270,17 +247,18 @@ function InteractiveGlowCanvas() {
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, width, height)
 
-    render()
+    animationFrameId = requestAnimationFrame(render)
 
     return () => {
       cancelAnimationFrame(animationFrameId)
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('mousemove', onMouseMove)
-      window.removeEventListener('mouseleave', onMouseLeave)
+      window.removeEventListener('mousedown', onMouseDown)
+      window.removeEventListener('mouseleave', onPointerLeave)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
-      window.removeEventListener('touchend', onTouchEnd)
-      window.removeEventListener('touchcancel', onTouchEnd)
+      window.removeEventListener('touchend', onPointerLeave)
+      window.removeEventListener('touchcancel', onPointerLeave)
     }
   }, [])
 
