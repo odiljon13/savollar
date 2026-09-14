@@ -19,7 +19,7 @@ function InteractiveGlowCanvas() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Pointer state with spring velocity and speed
+    // Interactive pointer state
     const pointer = {
       x: width / 2,
       y: height / 2,
@@ -27,34 +27,40 @@ function InteractiveGlowCanvas() {
       targetY: height / 2,
       vx: 0,
       vy: 0,
-      speed: 0,
       active: false,
     }
 
-    // 5 multi-color aurora silk strands
-    const strandConfigs = [
-      { color1: '#00f2fe', color2: '#4facfe', glow: 'rgba(0, 242, 254, 0.55)', phase: 0, width: 4.8 },
-      { color1: '#f355da', color2: '#7000ff', glow: 'rgba(243, 85, 218, 0.55)', phase: 1.25, width: 4.2 },
-      { color1: '#ff0844', color2: '#ffb199', glow: 'rgba(255, 8, 68, 0.5)', phase: 2.5, width: 3.8 },
-      { color1: '#00f5a0', color2: '#00d9f5', glow: 'rgba(0, 245, 160, 0.5)', phase: 3.75, width: 3.5 },
-      { color1: '#f6d365', color2: '#fda085', glow: 'rgba(246, 211, 101, 0.5)', phase: 5.0, width: 3.2 },
-    ]
-
-    const numPoints = 28
-    const strands = strandConfigs.map((cfg) => {
-      const points = []
-      for (let i = 0; i < numPoints; i++) {
-        points.push({ x: width / 2, y: height / 2 })
-      }
-      return { ...cfg, points }
-    })
-
+    // Dynamic expanding neon ripples created by finger/mouse motions
+    const ripples = []
+    let lastRipplePos = { x: 0, y: 0 }
+    let globalHue = 180
     let time = 0
+
+    const triggerRipple = (x, y) => {
+      const dist = Math.hypot(x - lastRipplePos.x, y - lastRipplePos.y)
+      if (dist > 30 || ripples.length === 0) {
+        globalHue = (globalHue + 18) % 360
+        ripples.push({
+          x,
+          y,
+          radius: 8,
+          maxRadius: 180,
+          hue: globalHue,
+          alpha: 0.75,
+          speed: 3.2,
+        })
+        lastRipplePos = { x, y }
+        if (ripples.length > 20) {
+          ripples.shift()
+        }
+      }
+    }
 
     const updatePointer = (clientX, clientY) => {
       pointer.targetX = clientX
       pointer.targetY = clientY
       pointer.active = true
+      triggerRipple(clientX, clientY)
     }
 
     const onMouseMove = (e) => {
@@ -89,109 +95,170 @@ function InteractiveGlowCanvas() {
     window.addEventListener('touchcancel', onTouchEnd, { passive: true })
 
     const render = () => {
-      time += 0.035
+      time += 0.025
 
-      // Smooth pointer spring chase
+      // Smooth pointer spring physics
       const dx = pointer.targetX - pointer.x
       const dy = pointer.targetY - pointer.y
-      pointer.vx = pointer.vx * 0.72 + dx * 0.18
-      pointer.vy = pointer.vy * 0.72 + dy * 0.18
+      pointer.vx = pointer.vx * 0.76 + dx * 0.16
+      pointer.vy = pointer.vy * 0.76 + dy * 0.16
       pointer.x += pointer.vx
       pointer.y += pointer.vy
-      pointer.speed = Math.hypot(pointer.vx, pointer.vy)
 
-      // Gentle floating when user is idle
+      // Idle subtle breathing motion
       if (!pointer.active) {
-        pointer.targetX = width / 2 + Math.sin(time * 0.6) * (width * 0.28)
-        pointer.targetY = height / 2 + Math.cos(time * 0.8) * (height * 0.2)
+        pointer.targetX = width / 2 + Math.sin(time * 0.7) * (width * 0.22)
+        pointer.targetY = height / 2 + Math.cos(time * 0.5) * (height * 0.16)
+        if (Math.random() < 0.035) {
+          triggerRipple(pointer.x, pointer.y)
+        }
       }
 
-      // Smooth dark decay to create silky motion dissolution
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)'
+      // Pure black canvas background
+      ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, width, height)
 
+      // Additive blending for luminous laser effects
       ctx.globalCompositeOperation = 'lighter'
 
-      // Soft luminous spotlight centered around pointer
-      const spotRadius = pointer.active ? 200 : 140
-      const spotGrad = ctx.createRadialGradient(
+      // 1. Soft atmospheric neon aura under cursor/finger
+      const auraRadius = pointer.active ? 240 : 160
+      const auraGrad = ctx.createRadialGradient(
         pointer.x,
         pointer.y,
         0,
         pointer.x,
         pointer.y,
-        spotRadius
+        auraRadius
       )
-      spotGrad.addColorStop(0, 'rgba(112, 0, 255, 0.35)')
-      spotGrad.addColorStop(0.3, 'rgba(0, 242, 254, 0.22)')
-      spotGrad.addColorStop(0.65, 'rgba(243, 85, 218, 0.09)')
-      spotGrad.addColorStop(1, 'transparent')
+      auraGrad.addColorStop(0, `hsla(${globalHue}, 100%, 65%, 0.36)`)
+      auraGrad.addColorStop(0.35, `hsla(${(globalHue + 50) % 360}, 100%, 60%, 0.18)`)
+      auraGrad.addColorStop(0.7, `hsla(${(globalHue + 110) % 360}, 95%, 55%, 0.05)`)
+      auraGrad.addColorStop(1, 'transparent')
 
-      ctx.fillStyle = spotGrad
+      ctx.fillStyle = auraGrad
       ctx.beginPath()
-      ctx.arc(pointer.x, pointer.y, spotRadius, 0, Math.PI * 2)
+      ctx.arc(pointer.x, pointer.y, auraRadius, 0, Math.PI * 2)
       ctx.fill()
 
-      // Update and render each undulating aurora silk strand
-      strands.forEach((strand) => {
-        const points = strand.points
+      // 2. Render expanding neon shockwave rings
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const r = ripples[i]
+        r.radius += r.speed
+        r.alpha *= 0.955
 
-        // Head joint follows pointer with harmonic offset
-        const headOffsetAngle = time * 2 + strand.phase
-        const headOffsetDist = Math.min(pointer.speed * 1.5, 22) + Math.sin(time + strand.phase) * 6
-        const targetHeadX = pointer.x + Math.cos(headOffsetAngle) * headOffsetDist
-        const targetHeadY = pointer.y + Math.sin(headOffsetAngle) * headOffsetDist
-
-        points[0].x += (targetHeadX - points[0].x) * 0.45
-        points[0].y += (targetHeadY - points[0].y) * 0.45
-
-        // Trailing joints with spring inertia and wave harmonics
-        for (let i = 1; i < numPoints; i++) {
-          const prev = points[i - 1]
-          const curr = points[i]
-
-          const wave = Math.sin(time * 2.5 - i * 0.32 + strand.phase) * (4 + (i / numPoints) * 14)
-          const perpAngle = Math.atan2(curr.y - prev.y, curr.x - prev.x) + Math.PI / 2
-          const waveX = Math.cos(perpAngle) * wave * 0.32
-          const waveY = Math.sin(perpAngle) * wave * 0.32
-
-          curr.x += (prev.x - curr.x) * 0.35 + waveX
-          curr.y += (prev.y - curr.y) * 0.35 + waveY
+        if (r.alpha < 0.02 || r.radius > r.maxRadius) {
+          ripples.splice(i, 1)
+          continue
         }
 
-        // Draw smooth bezier curve through points
         ctx.save()
+        ctx.strokeStyle = `hsla(${r.hue}, 100%, 72%, ${r.alpha})`
+        ctx.shadowColor = `hsla(${r.hue}, 100%, 65%, ${r.alpha})`
+        ctx.shadowBlur = 14
+        ctx.lineWidth = Math.max(1, 2.5 * r.alpha)
         ctx.beginPath()
-        ctx.moveTo(points[0].x, points[0].y)
-
-        for (let i = 1; i < numPoints - 1; i++) {
-          const midX = (points[i].x + points[i + 1].x) / 2
-          const midY = (points[i].y + points[i + 1].y) / 2
-          ctx.quadraticCurveTo(points[i].x, points[i].y, midX, midY)
-        }
-
-        // Ribbon gradient stroke
-        const grad = ctx.createLinearGradient(
-          points[0].x,
-          points[0].y,
-          points[numPoints - 1].x,
-          points[numPoints - 1].y
-        )
-        grad.addColorStop(0, strand.color1)
-        grad.addColorStop(0.5, strand.color2)
-        grad.addColorStop(1, 'transparent')
-
-        ctx.strokeStyle = grad
-        ctx.lineWidth = strand.width
-        ctx.lineCap = 'round'
-        ctx.lineJoin = 'round'
-        ctx.shadowColor = strand.glow
-        ctx.shadowBlur = 18
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2)
         ctx.stroke()
         ctx.restore()
-      })
+      }
 
-      // Core chromatic glowing orb at pointer
+      // 3. Render 3D Quantum Gravity Grid (Horizontal & Vertical laser contour lines)
+      const stepY = 48
+      const stepX = 52
+      const influenceRadius = 230
+
+      // Horizontal wave contours
+      const numLinesY = Math.ceil(height / stepY) + 2
+      for (let j = 0; j < numLinesY; j++) {
+        const baseY = j * stepY
+
+        ctx.beginPath()
+        let isStarted = false
+
+        for (let x = 0; x <= width + 40; x += 24) {
+          const dist = Math.hypot(x - pointer.x, baseY - pointer.y)
+          let warpY = 0
+
+          // Interactive magnetic gravity warp
+          if (dist < influenceRadius) {
+            const factor = Math.cos((dist / influenceRadius) * (Math.PI / 2))
+            warpY = factor * factor * 38 * (pointer.y > baseY ? 0.7 : -0.7)
+          }
+
+          // Gentle ambient wave
+          const ambientWave = Math.sin(time * 1.5 + x * 0.005 + j * 0.4) * 5
+          const y = baseY + warpY + ambientWave
+
+          if (!isStarted) {
+            ctx.moveTo(x, y)
+            isStarted = true
+          } else {
+            ctx.lineTo(x, y)
+          }
+        }
+
+        // Check proximity to pointer for vibrant neon lighting
+        const lineDist = Math.abs(baseY - pointer.y)
+        if (lineDist < influenceRadius) {
+          const proximity = 1 - lineDist / influenceRadius
+          ctx.strokeStyle = `hsla(${(globalHue + j * 8) % 360}, 100%, 68%, ${0.15 + proximity * 0.55})`
+          ctx.lineWidth = 1 + proximity * 1.8
+          ctx.shadowColor = `hsla(${(globalHue + j * 8) % 360}, 100%, 65%, ${proximity * 0.7})`
+          ctx.shadowBlur = proximity * 12
+        } else {
+          ctx.strokeStyle = 'rgba(99, 102, 241, 0.07)'
+          ctx.lineWidth = 1
+          ctx.shadowBlur = 0
+        }
+
+        ctx.stroke()
+      }
+
+      // Vertical laser mesh lines
+      const numLinesX = Math.ceil(width / stepX) + 2
+      for (let i = 0; i < numLinesX; i++) {
+        const baseX = i * stepX
+
+        ctx.beginPath()
+        let isStarted = false
+
+        for (let y = 0; y <= height + 40; y += 28) {
+          const dist = Math.hypot(baseX - pointer.x, y - pointer.y)
+          let warpX = 0
+
+          if (dist < influenceRadius) {
+            const factor = Math.cos((dist / influenceRadius) * (Math.PI / 2))
+            warpX = factor * factor * 28 * (pointer.x > baseX ? 0.6 : -0.6)
+          }
+
+          const x = baseX + warpX
+
+          if (!isStarted) {
+            ctx.moveTo(x, y)
+            isStarted = true
+          } else {
+            ctx.lineTo(x, y)
+          }
+        }
+
+        const lineDist = Math.abs(baseX - pointer.x)
+        if (lineDist < influenceRadius) {
+          const proximity = 1 - lineDist / influenceRadius
+          ctx.strokeStyle = `hsla(${(globalHue + i * 8 + 60) % 360}, 100%, 68%, ${0.12 + proximity * 0.45})`
+          ctx.lineWidth = 1 + proximity * 1.5
+          ctx.shadowColor = `hsla(${(globalHue + i * 8 + 60) % 360}, 100%, 65%, ${proximity * 0.6})`
+          ctx.shadowBlur = proximity * 10
+        } else {
+          ctx.strokeStyle = 'rgba(99, 102, 241, 0.05)'
+          ctx.lineWidth = 1
+          ctx.shadowBlur = 0
+        }
+
+        ctx.stroke()
+      }
+
+      // 4. Luminous focal lens orb right at cursor/touch
       if (pointer.active) {
         ctx.save()
         const coreGrad = ctx.createRadialGradient(
@@ -200,18 +267,18 @@ function InteractiveGlowCanvas() {
           0,
           pointer.x,
           pointer.y,
-          36
+          32
         )
         coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
-        coreGrad.addColorStop(0.3, 'rgba(0, 242, 254, 0.8)')
-        coreGrad.addColorStop(0.65, 'rgba(243, 85, 218, 0.4)')
+        coreGrad.addColorStop(0.35, `hsla(${globalHue}, 100%, 75%, 0.75)`)
+        coreGrad.addColorStop(0.7, `hsla(${(globalHue + 40) % 360}, 100%, 65%, 0.3)`)
         coreGrad.addColorStop(1, 'transparent')
 
         ctx.fillStyle = coreGrad
-        ctx.shadowColor = 'rgba(0, 242, 254, 1)'
-        ctx.shadowBlur = 22
+        ctx.shadowColor = `hsla(${globalHue}, 100%, 65%, 1)`
+        ctx.shadowBlur = 20
         ctx.beginPath()
-        ctx.arc(pointer.x, pointer.y, 36, 0, Math.PI * 2)
+        ctx.arc(pointer.x, pointer.y, 32, 0, Math.PI * 2)
         ctx.fill()
         ctx.restore()
       }
@@ -219,10 +286,6 @@ function InteractiveGlowCanvas() {
       ctx.globalCompositeOperation = 'source-over'
       animationFrameId = requestAnimationFrame(render)
     }
-
-    // Initial background fill
-    ctx.fillStyle = '#000000'
-    ctx.fillRect(0, 0, width, height)
 
     render()
 
