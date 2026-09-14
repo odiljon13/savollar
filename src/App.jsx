@@ -13,252 +13,266 @@ function InteractiveGlowCanvas() {
     let width = (canvas.width = window.innerWidth)
     let height = (canvas.height = window.innerHeight)
 
-    const handleResize = () => {
+    const hexRadius = 34
+    const hexWidth = Math.sqrt(3) * hexRadius
+    const hexVertDist = hexRadius * 1.5
+
+    let hexGrid = []
+
+    const buildGrid = () => {
       width = canvas.width = window.innerWidth
       height = canvas.height = window.innerHeight
-    }
-    window.addEventListener('resize', handleResize)
+      hexGrid = []
 
-    // Smooth pointer state with spring interpolation
+      const cols = Math.ceil(width / hexWidth) + 2
+      const rows = Math.ceil(height / hexVertDist) + 2
+
+      for (let r = -1; r < rows; r++) {
+        const y = r * hexVertDist
+        const xOffset = (r % 2 !== 0) ? hexWidth / 2 : 0
+        for (let c = -1; c < cols; c++) {
+          const x = c * hexWidth + xOffset
+          hexGrid.push({
+            cx: x,
+            cy: y,
+            intensity: 0,
+            hue: 200,
+          })
+        }
+      }
+    }
+
+    buildGrid()
+    window.addEventListener('resize', buildGrid)
+
     const pointer = {
-      x: width * 0.5,
-      y: height * 0.5,
-      targetX: width * 0.5,
-      targetY: height * 0.5,
+      x: width / 2,
+      y: height / 2,
       active: false,
       lastMoved: Date.now(),
     }
 
-    // Interactive fluid aurora nodes (Apple / Stripe AAA luxury standard)
-    const nodes = [
-      {
-        baseX: width * 0.25,
-        baseY: height * 0.3,
-        x: width * 0.25,
-        y: height * 0.3,
-        radius: 460,
-        hue: 260, // Electric Violet / Purple
-        speed: 0.0008,
-        offset: 0,
-        pull: 0.045,
-        orbitX: 180,
-        orbitY: 130,
-      },
-      {
-        baseX: width * 0.75,
-        baseY: height * 0.35,
-        x: width * 0.75,
-        y: height * 0.35,
-        radius: 500,
-        hue: 190, // Cyber Cyan / Azure
-        speed: 0.0011,
-        offset: 2.1,
-        pull: 0.04,
-        orbitX: 200,
-        orbitY: 150,
-      },
-      {
-        baseX: width * 0.5,
-        baseY: height * 0.7,
-        x: width * 0.5,
-        y: height * 0.7,
-        radius: 480,
-        hue: 320, // Neon Fuchsia / Magenta
-        speed: 0.0009,
-        offset: 4.2,
-        pull: 0.035,
-        orbitX: 220,
-        orbitY: 140,
-      },
-      {
-        baseX: width * 0.5,
-        baseY: height * 0.45,
-        x: width * 0.5,
-        y: height * 0.45,
-        radius: 420,
-        hue: 220, // Deep Royal Sapphire
-        speed: 0.0014,
-        offset: 1.2,
-        pull: 0.06,
-        orbitX: 150,
-        orbitY: 120,
-      },
-    ]
+    let ripples = []
+    let globalHue = 200
+    let scanLine = 0
 
-    let pulses = []
-    let globalHueShift = 0
-
-    const onPointerMove = (clientX, clientY) => {
-      pointer.targetX = clientX
-      pointer.targetY = clientY
+    const activateNearbyHexes = (x, y) => {
+      globalHue = (globalHue + 1.4) % 360
+      pointer.x = x
+      pointer.y = y
       pointer.active = true
       pointer.lastMoved = Date.now()
+
+      const affectRadius = 220
+      const affectRadiusSq = affectRadius * affectRadius
+
+      for (let i = 0; i < hexGrid.length; i++) {
+        const hex = hexGrid[i]
+        const dx = hex.cx - x
+        const dy = hex.cy - y
+        const distSq = dx * dx + dy * dy
+
+        if (distSq < affectRadiusSq) {
+          const dist = Math.sqrt(distSq)
+          const target = Math.pow(1 - dist / affectRadius, 1.4)
+          if (target > hex.intensity) {
+            hex.intensity = target
+            hex.hue = (globalHue + (dist / affectRadius) * 40) % 360
+          }
+        }
+      }
+    }
+
+    const triggerShockwave = (x, y) => {
+      ripples.push({
+        x,
+        y,
+        radius: 0,
+        maxRadius: Math.min(width, 460),
+        speed: 14,
+        alpha: 1.0,
+        hue: globalHue,
+      })
     }
 
     const onMouseMove = (e) => {
-      onPointerMove(e.clientX, e.clientY)
+      activateNearbyHexes(e.clientX, e.clientY)
+    }
+
+    const onMouseDown = (e) => {
+      triggerShockwave(e.clientX, e.clientY)
+    }
+
+    const onMouseLeave = () => {
+      pointer.active = false
     }
 
     const onTouchStart = (e) => {
       if (e.touches.length > 0) {
-        onPointerMove(e.touches[0].clientX, e.touches[0].clientY)
-        pulses.push({
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
-          radius: 10,
-          maxRadius: 180,
-          alpha: 0.8,
-          hue: (210 + globalHueShift) % 360,
-        })
+        const touch = e.touches[0]
+        activateNearbyHexes(touch.clientX, touch.clientY)
+        triggerShockwave(touch.clientX, touch.clientY)
       }
     }
 
     const onTouchMove = (e) => {
       if (e.touches.length > 0) {
-        onPointerMove(e.touches[0].clientX, e.touches[0].clientY)
+        const touch = e.touches[0]
+        activateNearbyHexes(touch.clientX, touch.clientY)
       }
     }
 
-    const onMouseDown = (e) => {
-      pulses.push({
-        x: e.clientX,
-        y: e.clientY,
-        radius: 10,
-        maxRadius: 200,
-        alpha: 0.75,
-        hue: (210 + globalHueShift) % 360,
-      })
-    }
-
-    const onPointerLeave = () => {
+    const onTouchEnd = () => {
       pointer.active = false
     }
 
     window.addEventListener('mousemove', onMouseMove, { passive: true })
     window.addEventListener('mousedown', onMouseDown, { passive: true })
-    window.addEventListener('mouseleave', onPointerLeave, { passive: true })
+    window.addEventListener('mouseleave', onMouseLeave, { passive: true })
     window.addEventListener('touchstart', onTouchStart, { passive: true })
     window.addEventListener('touchmove', onTouchMove, { passive: true })
-    window.addEventListener('touchend', onPointerLeave, { passive: true })
-    window.addEventListener('touchcancel', onPointerLeave, { passive: true })
+    window.addEventListener('touchend', onTouchEnd, { passive: true })
+    window.addEventListener('touchcancel', onTouchEnd, { passive: true })
 
-    let lastTime = performance.now()
+    const drawHexagon = (cx, cy, r) => {
+      ctx.beginPath()
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI / 3) * i - Math.PI / 6
+        const hx = cx + r * Math.cos(angle)
+        const hy = cy + r * Math.sin(angle)
+        if (i === 0) ctx.moveTo(hx, hy)
+        else ctx.lineTo(hx, hy)
+      }
+      ctx.closePath()
+    }
 
-    const render = (currentTime) => {
-      const delta = Math.min(currentTime - lastTime, 64)
-      lastTime = currentTime
+    const render = () => {
+      // Advance idle radar scan line
+      scanLine = (scanLine + 2.5) % (width + height + 300)
 
-      globalHueShift = (globalHueShift + delta * 0.012) % 360
-
-      // Pointer spring physics
-      pointer.x += (pointer.targetX - pointer.x) * 0.1
-      pointer.y += (pointer.targetY - pointer.y) * 0.1
-
-      // 1. Pure Pitch Black Background
+      // Clear true pitch-black background
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, width, height)
 
-      // Use lighter blending for luminous, clean liquid light
-      ctx.globalCompositeOperation = 'lighter'
+      // 1. Process click/touch shockwave ripples
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const rip = ripples[i]
+        rip.radius += rip.speed
+        rip.alpha -= 0.024
 
-      // 2. Liquid Aurora Mesh nodes (organic fluid drift + magnetic cursor attraction)
-      const isIdle = Date.now() - pointer.lastMoved > 2500
-
-      nodes.forEach((node, i) => {
-        // Natural harmonic Lissajous drift
-        const t = currentTime * node.speed + node.offset
-        const naturalX = (width * (i === 0 ? 0.3 : i === 1 ? 0.7 : 0.5)) + Math.sin(t * 1.3) * node.orbitX
-        const naturalY = (height * (i === 0 ? 0.35 : i === 1 ? 0.4 : i === 2 ? 0.7 : 0.5)) + Math.cos(t * 0.9) * node.orbitY
-
-        // Magnetic attraction towards pointer
-        if (pointer.active || !isIdle) {
-          const targetX = naturalX + (pointer.x - naturalX) * node.pull * 2.8
-          const targetY = naturalY + (pointer.y - naturalY) * node.pull * 2.8
-          node.x += (targetX - node.x) * 0.06
-          node.y += (targetY - node.y) * 0.06
-        } else {
-          node.x += (naturalX - node.x) * 0.04
-          node.y += (naturalY - node.y) * 0.04
-        }
-
-        const currentHue = (node.hue + globalHueShift) % 360
-        const grad = ctx.createRadialGradient(
-          node.x,
-          node.y,
-          0,
-          node.x,
-          node.y,
-          node.radius
-        )
-        grad.addColorStop(0, `hsla(${currentHue}, 95%, 60%, 0.32)`)
-        grad.addColorStop(0.35, `hsla(${(currentHue + 30) % 360}, 90%, 50%, 0.14)`)
-        grad.addColorStop(0.7, `hsla(${(currentHue + 60) % 360}, 85%, 40%, 0.035)`)
-        grad.addColorStop(1, 'transparent')
-
-        ctx.fillStyle = grad
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2)
-        ctx.fill()
-      })
-
-      // 3. Magnetic cursor spotlight (luxurious, silky ambient glow directly where the user navigates)
-      const spotRadius = 340
-      const spotHue = (205 + globalHueShift) % 360
-      const spotGrad = ctx.createRadialGradient(
-        pointer.x,
-        pointer.y,
-        0,
-        pointer.x,
-        pointer.y,
-        spotRadius
-      )
-      spotGrad.addColorStop(0, `hsla(${spotHue}, 100%, 75%, 0.35)`)
-      spotGrad.addColorStop(0.3, `hsla(${(spotHue + 35) % 360}, 95%, 60%, 0.15)`)
-      spotGrad.addColorStop(0.7, `hsla(${(spotHue + 75) % 360}, 90%, 45%, 0.03)`)
-      spotGrad.addColorStop(1, 'transparent')
-
-      ctx.fillStyle = spotGrad
-      ctx.beginPath()
-      ctx.arc(pointer.x, pointer.y, spotRadius, 0, Math.PI * 2)
-      ctx.fill()
-
-      // 4. Soft click / tap shockwave pulses
-      for (let i = pulses.length - 1; i >= 0; i--) {
-        const p = pulses[i]
-        p.radius += (p.maxRadius - p.radius) * 0.08
-        p.alpha -= 0.024
-
-        if (p.alpha <= 0) {
-          pulses.splice(i, 1)
+        if (rip.alpha <= 0 || rip.radius > rip.maxRadius) {
+          ripples.splice(i, 1)
           continue
         }
 
+        // Ignite hexes touched by the shockwave ring
+        const rMin = rip.radius - 35
+        const rMax = rip.radius + 35
+        for (let j = 0; j < hexGrid.length; j++) {
+          const hex = hexGrid[j]
+          const dist = Math.hypot(hex.cx - rip.x, hex.cy - rip.y)
+          if (dist >= rMin && dist <= rMax) {
+            const power = rip.alpha * (1 - Math.abs(dist - rip.radius) / 35)
+            if (power > hex.intensity) {
+              hex.intensity = power
+              hex.hue = rip.hue
+            }
+          }
+        }
+      }
+
+      // 2. Idle subtle ambient radar scan beam
+      const isIdle = Date.now() - pointer.lastMoved > 1800
+      if (isIdle) {
+        for (let j = 0; j < hexGrid.length; j++) {
+          const hex = hexGrid[j]
+          const proj = hex.cx + hex.cy
+          const diff = Math.abs(proj - scanLine)
+          if (diff < 70) {
+            const scanPower = (1 - diff / 70) * 0.45
+            if (scanPower > hex.intensity) {
+              hex.intensity = scanPower
+              hex.hue = (210 + (proj / 8)) % 360
+            }
+          }
+        }
+      }
+
+      ctx.globalCompositeOperation = 'lighter'
+
+      // 3. Render ambient cursor spotlight
+      if (pointer.active) {
+        const spotRadius = 260
+        const spotGrad = ctx.createRadialGradient(
+          pointer.x,
+          pointer.y,
+          0,
+          pointer.x,
+          pointer.y,
+          spotRadius
+        )
+        spotGrad.addColorStop(0, `hsla(${globalHue}, 100%, 70%, 0.22)`)
+        spotGrad.addColorStop(0.5, `hsla(${(globalHue + 40) % 360}, 95%, 55%, 0.08)`)
+        spotGrad.addColorStop(1, 'transparent')
+
+        ctx.fillStyle = spotGrad
         ctx.beginPath()
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
-        ctx.lineWidth = 2.2 * p.alpha
-        ctx.strokeStyle = `hsla(${p.hue}, 100%, 75%, ${p.alpha * 0.7})`
-        ctx.stroke()
+        ctx.arc(pointer.x, pointer.y, spotRadius, 0, Math.PI * 2)
+        ctx.fill()
+      }
+
+      // 4. Draw all hexagons
+      for (let i = 0; i < hexGrid.length; i++) {
+        const hex = hexGrid[i]
+
+        // Smooth decay when mouse leaves
+        hex.intensity *= 0.945
+
+        const r = hexRadius - 2.5
+
+        if (hex.intensity > 0.03) {
+          // ACTIVE GLOWING HEXAGON
+          drawHexagon(hex.cx, hex.cy, r)
+
+          // Glowing inner fill
+          ctx.fillStyle = `hsla(${hex.hue}, 100%, 60%, ${hex.intensity * 0.28})`
+          ctx.fill()
+
+          // Vibrant laser stroke
+          ctx.lineWidth = 1.4 + hex.intensity * 1.8
+          ctx.strokeStyle = `hsla(${hex.hue}, 100%, 75%, ${hex.intensity * 0.9})`
+          ctx.stroke()
+
+          // Center energy core dot
+          ctx.beginPath()
+          ctx.arc(hex.cx, hex.cy, 1.8 + hex.intensity * 2.2, 0, Math.PI * 2)
+          ctx.fillStyle = `rgba(255, 255, 255, ${hex.intensity * 0.95})`
+          ctx.fill()
+        } else {
+          // SLEEK SUBTLE IDLE WIREFRAME
+          drawHexagon(hex.cx, hex.cy, r)
+          ctx.lineWidth = 0.8
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)'
+          ctx.stroke()
+        }
       }
 
       ctx.globalCompositeOperation = 'source-over'
       animationFrameId = requestAnimationFrame(render)
     }
 
-    ctx.fillStyle = '#000000'
-    ctx.fillRect(0, 0, width, height)
-
-    animationFrameId = requestAnimationFrame(render)
+    render()
 
     return () => {
       cancelAnimationFrame(animationFrameId)
-      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('resize', buildGrid)
       window.removeEventListener('mousemove', onMouseMove)
       window.removeEventListener('mousedown', onMouseDown)
-      window.removeEventListener('mouseleave', onPointerLeave)
+      window.removeEventListener('mouseleave', onMouseLeave)
       window.removeEventListener('touchstart', onTouchStart)
       window.removeEventListener('touchmove', onTouchMove)
-      window.removeEventListener('touchend', onPointerLeave)
-      window.removeEventListener('touchcancel', onPointerLeave)
+      window.removeEventListener('touchend', onTouchEnd)
+      window.removeEventListener('touchcancel', onTouchEnd)
     }
   }, [])
 
