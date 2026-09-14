@@ -19,9 +19,9 @@ function InteractiveGlowCanvas() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Large, rich liquid neon trail (strictly zero scatter)
+    // Large, rich liquid neon trail (10-second lifespan, strictly zero scatter)
     const points = []
-    const maxPoints = 75
+    const maxPoints = 400
     let globalHue = 200
 
     let pointer = {
@@ -33,23 +33,23 @@ function InteractiveGlowCanvas() {
     }
 
     const addPoint = (x, y) => {
-      globalHue = (globalHue + 2.8) % 360
+      globalHue = (globalHue + 2.5) % 360
+      const now = performance.now()
 
       if (pointer.lastX > 0 && pointer.lastY > 0) {
         const dx = x - pointer.lastX
         const dy = y - pointer.lastY
         const dist = Math.hypot(dx, dy)
-        // Smooth interpolation for rich, continuous broad ribbon without gaps
-        const steps = Math.min(Math.max(Math.floor(dist / 14), 1), 8)
+        if (dist < 8) return
 
+        const steps = Math.min(Math.max(Math.floor(dist / 14), 1), 7)
         for (let i = 1; i <= steps; i++) {
           points.push({
             x: pointer.lastX + (dx * i) / steps,
             y: pointer.lastY + (dy * i) / steps,
             hue: (globalHue + i * 2) % 360,
             radius: 75,
-            alpha: 0.85,
-            decay: 0.024,
+            createdAt: now,
           })
         }
       } else {
@@ -58,8 +58,7 @@ function InteractiveGlowCanvas() {
           y,
           hue: globalHue,
           radius: 75,
-          alpha: 0.85,
-          decay: 0.024,
+          createdAt: now,
         })
       }
 
@@ -114,8 +113,11 @@ function InteractiveGlowCanvas() {
     window.addEventListener('touchcancel', onTouchEnd, { passive: true })
 
     const render = () => {
-      // Clear with pitch black fade for velvety motion dissolution
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.24)'
+      const now = performance.now()
+      const lifespan = 10000 // 10 soniya (10 seconds)
+
+      // Solid black background clear to keep colors 100% visible for full 10 seconds
+      ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, width, height)
 
       ctx.globalCompositeOperation = 'lighter'
@@ -123,20 +125,27 @@ function InteractiveGlowCanvas() {
       // Render broad, rich trail points (anchored directly on path, zero drift)
       for (let i = points.length - 1; i >= 0; i--) {
         const pt = points[i]
-        pt.alpha -= pt.decay
+        const age = now - pt.createdAt
 
-        if (pt.alpha <= 0) {
+        // Remove point only after full 10 seconds
+        if (age >= lifespan) {
           points.splice(i, 1)
           continue
         }
 
-        // Softly shrinks as it fades, strictly never expanding or scattering
-        const r = pt.radius * (0.5 + 0.5 * pt.alpha)
+        const progress = age / lifespan // 0.0 to 1.0 over 10 seconds
+        // Full brilliant visibility for 7.5 seconds, then gentle smooth fade-out over remaining 2.5s
+        let alpha = 0.82
+        if (progress > 0.75) {
+          alpha = 0.82 * ((1 - progress) / 0.25)
+        }
+
+        const r = pt.radius * (0.6 + 0.4 * (alpha / 0.82))
 
         const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r)
-        grad.addColorStop(0, `hsla(${pt.hue}, 100%, 65%, ${pt.alpha * 0.75})`)
-        grad.addColorStop(0.4, `hsla(${(pt.hue + 30) % 360}, 95%, 55%, ${pt.alpha * 0.35})`)
-        grad.addColorStop(0.75, `hsla(${(pt.hue + 60) % 360}, 90%, 45%, ${pt.alpha * 0.1})`)
+        grad.addColorStop(0, `hsla(${pt.hue}, 100%, 65%, ${alpha * 0.75})`)
+        grad.addColorStop(0.4, `hsla(${(pt.hue + 30) % 360}, 95%, 55%, ${alpha * 0.35})`)
+        grad.addColorStop(0.75, `hsla(${(pt.hue + 60) % 360}, 90%, 45%, ${alpha * 0.1})`)
         grad.addColorStop(1, 'transparent')
 
         ctx.fillStyle = grad
