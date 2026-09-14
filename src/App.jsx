@@ -19,36 +19,37 @@ function InteractiveGlowCanvas() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Compact, non-scattering light trail
+    // Large, rich liquid neon trail (strictly zero scatter)
     const points = []
-    const maxPoints = 50
+    const maxPoints = 75
     let globalHue = 200
 
     let pointer = {
-      x: -100,
-      y: -100,
-      lastX: -100,
-      lastY: -100,
+      x: -200,
+      y: -200,
+      lastX: -200,
+      lastY: -200,
       active: false,
     }
 
     const addPoint = (x, y) => {
-      globalHue = (globalHue + 3) % 360
+      globalHue = (globalHue + 2.8) % 360
 
       if (pointer.lastX > 0 && pointer.lastY > 0) {
         const dx = x - pointer.lastX
         const dy = y - pointer.lastY
         const dist = Math.hypot(dx, dy)
-        const steps = Math.min(Math.max(Math.floor(dist / 12), 1), 6)
+        // Smooth interpolation for rich, continuous broad ribbon without gaps
+        const steps = Math.min(Math.max(Math.floor(dist / 14), 1), 8)
 
         for (let i = 1; i <= steps; i++) {
           points.push({
             x: pointer.lastX + (dx * i) / steps,
             y: pointer.lastY + (dy * i) / steps,
             hue: (globalHue + i * 2) % 360,
-            radius: 22,
+            radius: 75,
             alpha: 0.85,
-            decay: 0.042,
+            decay: 0.024,
           })
         }
       } else {
@@ -56,9 +57,9 @@ function InteractiveGlowCanvas() {
           x,
           y,
           hue: globalHue,
-          radius: 22,
+          radius: 75,
           alpha: 0.85,
-          decay: 0.042,
+          decay: 0.024,
         })
       }
 
@@ -79,8 +80,8 @@ function InteractiveGlowCanvas() {
 
     const onMouseLeave = () => {
       pointer.active = false
-      pointer.lastX = -100
-      pointer.lastY = -100
+      pointer.lastX = -200
+      pointer.lastY = -200
     }
 
     const onTouchStart = (e) => {
@@ -101,8 +102,8 @@ function InteractiveGlowCanvas() {
 
     const onTouchEnd = () => {
       pointer.active = false
-      pointer.lastX = -100
-      pointer.lastY = -100
+      pointer.lastX = -200
+      pointer.lastY = -200
     }
 
     window.addEventListener('mousemove', onMouseMove, { passive: true })
@@ -113,13 +114,13 @@ function InteractiveGlowCanvas() {
     window.addEventListener('touchcancel', onTouchEnd, { passive: true })
 
     const render = () => {
-      // Clear with pure pitch black fade
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
+      // Clear with pitch black fade for velvety motion dissolution
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.24)'
       ctx.fillRect(0, 0, width, height)
 
       ctx.globalCompositeOperation = 'lighter'
 
-      // Render compact non-scattering trail points
+      // Render broad, rich trail points (anchored directly on path, zero drift)
       for (let i = points.length - 1; i >= 0; i--) {
         const pt = points[i]
         pt.alpha -= pt.decay
@@ -129,12 +130,13 @@ function InteractiveGlowCanvas() {
           continue
         }
 
-        // Shrinks as it fades, never scatters or expands outward
-        const r = pt.radius * (0.4 + 0.6 * pt.alpha)
+        // Softly shrinks as it fades, strictly never expanding or scattering
+        const r = pt.radius * (0.5 + 0.5 * pt.alpha)
 
         const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r)
-        grad.addColorStop(0, `hsla(${pt.hue}, 100%, 72%, ${pt.alpha * 0.9})`)
-        grad.addColorStop(0.45, `hsla(${(pt.hue + 25) % 360}, 100%, 60%, ${pt.alpha * 0.45})`)
+        grad.addColorStop(0, `hsla(${pt.hue}, 100%, 65%, ${pt.alpha * 0.75})`)
+        grad.addColorStop(0.4, `hsla(${(pt.hue + 30) % 360}, 95%, 55%, ${pt.alpha * 0.35})`)
+        grad.addColorStop(0.75, `hsla(${(pt.hue + 60) % 360}, 90%, 45%, ${pt.alpha * 0.1})`)
         grad.addColorStop(1, 'transparent')
 
         ctx.fillStyle = grad
@@ -143,25 +145,46 @@ function InteractiveGlowCanvas() {
         ctx.fill()
       }
 
-      // Compact focused glowing orb right under cursor/touch
+      // Large, atmospheric neon spotlight right under cursor/touch
       if (pointer.active && pointer.x > 0 && pointer.y > 0) {
-        const focusRadius = 32
-        const focusGrad = ctx.createRadialGradient(
+        // Broad atmospheric outer aura
+        const auraRadius = 210
+        const auraGrad = ctx.createRadialGradient(
           pointer.x,
           pointer.y,
           0,
           pointer.x,
           pointer.y,
-          focusRadius
+          auraRadius
         )
-        focusGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
-        focusGrad.addColorStop(0.3, `hsla(${globalHue}, 100%, 75%, 0.8)`)
-        focusGrad.addColorStop(0.65, `hsla(${(globalHue + 35) % 360}, 100%, 60%, 0.35)`)
-        focusGrad.addColorStop(1, 'transparent')
+        auraGrad.addColorStop(0, `hsla(${globalHue}, 100%, 75%, 0.42)`)
+        auraGrad.addColorStop(0.35, `hsla(${(globalHue + 45) % 360}, 100%, 60%, 0.18)`)
+        auraGrad.addColorStop(0.7, `hsla(${(globalHue + 90) % 360}, 95%, 50%, 0.05)`)
+        auraGrad.addColorStop(1, 'transparent')
 
-        ctx.fillStyle = focusGrad
+        ctx.fillStyle = auraGrad
         ctx.beginPath()
-        ctx.arc(pointer.x, pointer.y, focusRadius, 0, Math.PI * 2)
+        ctx.arc(pointer.x, pointer.y, auraRadius, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Vibrant central neon core
+        const coreRadius = 45
+        const coreGrad = ctx.createRadialGradient(
+          pointer.x,
+          pointer.y,
+          0,
+          pointer.x,
+          pointer.y,
+          coreRadius
+        )
+        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
+        coreGrad.addColorStop(0.35, `hsla(${globalHue}, 100%, 72%, 0.8)`)
+        coreGrad.addColorStop(0.7, `hsla(${(globalHue + 30) % 360}, 100%, 60%, 0.35)`)
+        coreGrad.addColorStop(1, 'transparent')
+
+        ctx.fillStyle = coreGrad
+        ctx.beginPath()
+        ctx.arc(pointer.x, pointer.y, coreRadius, 0, Math.PI * 2)
         ctx.fill()
       }
 
@@ -169,7 +192,7 @@ function InteractiveGlowCanvas() {
       animationFrameId = requestAnimationFrame(render)
     }
 
-    // Initial black fill
+    // Initial pitch-black fill
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, width, height)
 
