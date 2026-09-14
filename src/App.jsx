@@ -19,90 +19,68 @@ function InteractiveGlowCanvas() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Large, rich liquid neon trail (10-second lifespan, strictly zero scatter)
-    const points = []
-    const maxPoints = 400
-    let globalHue = 200
-
-    let pointer = {
-      x: -200,
-      y: -200,
-      lastX: -200,
-      lastY: -200,
+    // Primary pointer and smooth lagging secondary follower (Stripe / Vercel AAA Standard)
+    const pointer = {
+      x: width / 2,
+      y: height / 2,
+      targetX: width / 2,
+      targetY: height / 2,
       active: false,
     }
 
-    const addPoint = (x, y) => {
-      globalHue = (globalHue + 2.5) % 360
-      const now = performance.now()
+    const follower = {
+      x: width / 2,
+      y: height / 2,
+    }
 
-      if (pointer.lastX > 0 && pointer.lastY > 0) {
-        const dx = x - pointer.lastX
-        const dy = y - pointer.lastY
-        const dist = Math.hypot(dx, dy)
-        if (dist < 8) return
+    // Smooth elegant light path (zero scatter, clean dissolution)
+    const trail = []
+    const maxTrail = 42
+    let globalHue = 220
+    let time = 0
 
-        const steps = Math.min(Math.max(Math.floor(dist / 14), 1), 7)
-        for (let i = 1; i <= steps; i++) {
-          points.push({
-            x: pointer.lastX + (dx * i) / steps,
-            y: pointer.lastY + (dy * i) / steps,
-            hue: (globalHue + i * 2) % 360,
-            radius: 75,
-            createdAt: now,
-          })
-        }
-      } else {
-        points.push({
-          x,
-          y,
-          hue: globalHue,
-          radius: 75,
-          createdAt: now,
-        })
-      }
-
-      if (points.length > maxPoints) {
-        points.splice(0, points.length - maxPoints)
-      }
-
-      pointer.lastX = x
-      pointer.lastY = y
-      pointer.x = x
-      pointer.y = y
+    const updatePointer = (clientX, clientY) => {
+      globalHue = (globalHue + 1.8) % 360
+      pointer.targetX = clientX
+      pointer.targetY = clientY
       pointer.active = true
+
+      trail.push({
+        x: clientX,
+        y: clientY,
+        hue: globalHue,
+        radius: 65,
+        alpha: 0.72,
+        decay: 0.022,
+      })
+
+      if (trail.length > maxTrail) {
+        trail.shift()
+      }
     }
 
     const onMouseMove = (e) => {
-      addPoint(e.clientX, e.clientY)
+      updatePointer(e.clientX, e.clientY)
     }
 
     const onMouseLeave = () => {
       pointer.active = false
-      pointer.lastX = -200
-      pointer.lastY = -200
     }
 
     const onTouchStart = (e) => {
       if (e.touches.length > 0) {
-        const touch = e.touches[0]
-        pointer.lastX = touch.clientX
-        pointer.lastY = touch.clientY
-        addPoint(touch.clientX, touch.clientY)
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY)
       }
     }
 
     const onTouchMove = (e) => {
       if (e.touches.length > 0) {
-        const touch = e.touches[0]
-        addPoint(touch.clientX, touch.clientY)
+        updatePointer(e.touches[0].clientX, e.touches[0].clientY)
       }
     }
 
     const onTouchEnd = () => {
       pointer.active = false
-      pointer.lastX = -200
-      pointer.lastY = -200
     }
 
     window.addEventListener('mousemove', onMouseMove, { passive: true })
@@ -113,71 +91,96 @@ function InteractiveGlowCanvas() {
     window.addEventListener('touchcancel', onTouchEnd, { passive: true })
 
     const render = () => {
-      const now = performance.now()
-      const lifespan = 10000 // 10 soniya (10 seconds)
+      time += 0.018
 
-      // Solid black background clear to keep colors 100% visible for full 10 seconds
+      // Smooth spring interpolation for primary pointer and lagging follower
+      if (pointer.active) {
+        pointer.x += (pointer.targetX - pointer.x) * 0.14
+        pointer.y += (pointer.targetY - pointer.y) * 0.14
+      } else {
+        // Calm organic floating orbit when idle
+        const idleX = width / 2 + Math.sin(time * 0.7) * (width * 0.22)
+        const idleY = height / 2 + Math.cos(time * 0.5) * (height * 0.18)
+        pointer.x += (idleX - pointer.x) * 0.05
+        pointer.y += (idleY - pointer.y) * 0.05
+      }
+
+      // Follower creates gorgeous iridescent dual-tone chromatic depth
+      follower.x += (pointer.x - follower.x) * 0.075
+      follower.y += (pointer.y - follower.y) * 0.075
+
+      // Pure pitch-black canvas background
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, width, height)
 
       ctx.globalCompositeOperation = 'lighter'
 
-      // Render broad, rich trail points (anchored directly on path, zero drift)
-      for (let i = points.length - 1; i >= 0; i--) {
-        const pt = points[i]
-        const age = now - pt.createdAt
+      // 1. Secondary follower ambient aura (lagging chromatic glow)
+      const secRadius = 360
+      const secGrad = ctx.createRadialGradient(
+        follower.x,
+        follower.y,
+        0,
+        follower.x,
+        follower.y,
+        secRadius
+      )
+      const followerHue = (globalHue + 60) % 360
+      secGrad.addColorStop(0, `hsla(${followerHue}, 100%, 65%, 0.22)`)
+      secGrad.addColorStop(0.4, `hsla(${(followerHue + 40) % 360}, 95%, 55%, 0.1)`)
+      secGrad.addColorStop(0.75, `hsla(${(followerHue + 80) % 360}, 90%, 45%, 0.03)`)
+      secGrad.addColorStop(1, 'transparent')
 
-        // Remove point only after full 10 seconds
-        if (age >= lifespan) {
-          points.splice(i, 1)
+      ctx.fillStyle = secGrad
+      ctx.beginPath()
+      ctx.arc(follower.x, follower.y, secRadius, 0, Math.PI * 2)
+      ctx.fill()
+
+      // 2. Primary interactive chromatic spotlight
+      const primRadius = 380
+      const primGrad = ctx.createRadialGradient(
+        pointer.x,
+        pointer.y,
+        0,
+        pointer.x,
+        pointer.y,
+        primRadius
+      )
+      primGrad.addColorStop(0, `hsla(${globalHue}, 100%, 70%, 0.35)`)
+      primGrad.addColorStop(0.35, `hsla(${(globalHue + 45) % 360}, 100%, 60%, 0.16)`)
+      primGrad.addColorStop(0.75, `hsla(${(globalHue + 90) % 360}, 95%, 50%, 0.04)`)
+      primGrad.addColorStop(1, 'transparent')
+
+      ctx.fillStyle = primGrad
+      ctx.beginPath()
+      ctx.arc(pointer.x, pointer.y, primRadius, 0, Math.PI * 2)
+      ctx.fill()
+
+      // 3. Smooth non-scattering light trail along movement path
+      for (let i = trail.length - 1; i >= 0; i--) {
+        const pt = trail[i]
+        pt.alpha -= pt.decay
+
+        if (pt.alpha <= 0) {
+          trail.splice(i, 1)
           continue
         }
 
-        const progress = age / lifespan // 0.0 to 1.0 over 10 seconds
-        // Full brilliant visibility for 7.5 seconds, then gentle smooth fade-out over remaining 2.5s
-        let alpha = 0.82
-        if (progress > 0.75) {
-          alpha = 0.82 * ((1 - progress) / 0.25)
-        }
+        const r = pt.radius * (0.5 + 0.5 * pt.alpha)
+        const tGrad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r)
+        tGrad.addColorStop(0, `hsla(${pt.hue}, 100%, 72%, ${pt.alpha * 0.6})`)
+        tGrad.addColorStop(0.5, `hsla(${(pt.hue + 30) % 360}, 95%, 60%, ${pt.alpha * 0.25})`)
+        tGrad.addColorStop(1, 'transparent')
 
-        const r = pt.radius * (0.6 + 0.4 * (alpha / 0.82))
-
-        const grad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r)
-        grad.addColorStop(0, `hsla(${pt.hue}, 100%, 65%, ${alpha * 0.75})`)
-        grad.addColorStop(0.4, `hsla(${(pt.hue + 30) % 360}, 95%, 55%, ${alpha * 0.35})`)
-        grad.addColorStop(0.75, `hsla(${(pt.hue + 60) % 360}, 90%, 45%, ${alpha * 0.1})`)
-        grad.addColorStop(1, 'transparent')
-
-        ctx.fillStyle = grad
+        ctx.fillStyle = tGrad
         ctx.beginPath()
         ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2)
         ctx.fill()
       }
 
-      // Large, atmospheric neon spotlight right under cursor/touch
-      if (pointer.active && pointer.x > 0 && pointer.y > 0) {
-        // Broad atmospheric outer aura
-        const auraRadius = 210
-        const auraGrad = ctx.createRadialGradient(
-          pointer.x,
-          pointer.y,
-          0,
-          pointer.x,
-          pointer.y,
-          auraRadius
-        )
-        auraGrad.addColorStop(0, `hsla(${globalHue}, 100%, 75%, 0.42)`)
-        auraGrad.addColorStop(0.35, `hsla(${(globalHue + 45) % 360}, 100%, 60%, 0.18)`)
-        auraGrad.addColorStop(0.7, `hsla(${(globalHue + 90) % 360}, 95%, 50%, 0.05)`)
-        auraGrad.addColorStop(1, 'transparent')
-
-        ctx.fillStyle = auraGrad
-        ctx.beginPath()
-        ctx.arc(pointer.x, pointer.y, auraRadius, 0, Math.PI * 2)
-        ctx.fill()
-
-        // Vibrant central neon core
-        const coreRadius = 45
+      // 4. Luminous focal lens orb under active cursor / finger
+      if (pointer.active) {
+        const coreRadius = 42
         const coreGrad = ctx.createRadialGradient(
           pointer.x,
           pointer.y,
@@ -187,8 +190,8 @@ function InteractiveGlowCanvas() {
           coreRadius
         )
         coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
-        coreGrad.addColorStop(0.35, `hsla(${globalHue}, 100%, 72%, 0.8)`)
-        coreGrad.addColorStop(0.7, `hsla(${(globalHue + 30) % 360}, 100%, 60%, 0.35)`)
+        coreGrad.addColorStop(0.35, `hsla(${globalHue}, 100%, 75%, 0.75)`)
+        coreGrad.addColorStop(0.7, `hsla(${(globalHue + 35) % 360}, 100%, 60%, 0.3)`)
         coreGrad.addColorStop(1, 'transparent')
 
         ctx.fillStyle = coreGrad
@@ -201,7 +204,6 @@ function InteractiveGlowCanvas() {
       animationFrameId = requestAnimationFrame(render)
     }
 
-    // Initial pitch-black fill
     ctx.fillStyle = '#000000'
     ctx.fillRect(0, 0, width, height)
 
