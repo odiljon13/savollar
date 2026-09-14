@@ -19,52 +19,74 @@ function InteractiveGlowCanvas() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Interactive pointer state
-    const pointer = {
+    // Liquid smoke puffs pool
+    const puffs = []
+    const maxPuffs = 130
+    let globalHue = 190
+
+    // Pointer state
+    let pointer = {
       x: width / 2,
       y: height / 2,
-      targetX: width / 2,
-      targetY: height / 2,
-      vx: 0,
-      vy: 0,
+      lastX: width / 2,
+      lastY: height / 2,
       active: false,
     }
 
-    // Dynamic expanding neon ripples created by finger/mouse motions
-    const ripples = []
-    let lastRipplePos = { x: 0, y: 0 }
-    let globalHue = 180
-    let time = 0
-
-    const triggerRipple = (x, y) => {
-      const dist = Math.hypot(x - lastRipplePos.x, y - lastRipplePos.y)
-      if (dist > 30 || ripples.length === 0) {
-        globalHue = (globalHue + 18) % 360
-        ripples.push({
-          x,
-          y,
-          radius: 8,
-          maxRadius: 180,
-          hue: globalHue,
-          alpha: 0.75,
-          speed: 3.2,
-        })
-        lastRipplePos = { x, y }
-        if (ripples.length > 20) {
-          ripples.shift()
+    // Spawn a billowy liquid smoke puff
+    const spawnSmokePuff = (x, y, dx, dy, count = 1) => {
+      for (let k = 0; k < count; k++) {
+        if (puffs.length >= maxPuffs) {
+          puffs.shift()
         }
+        globalHue = (globalHue + 2.2) % 360
+        const jitterAngle = Math.random() * Math.PI * 2
+        const jitterDist = Math.random() * 12
+        const px = x + Math.cos(jitterAngle) * jitterDist
+        const py = y + Math.sin(jitterAngle) * jitterDist
+
+        puffs.push({
+          x: px,
+          y: py,
+          vx: dx * 0.14 + (Math.random() - 0.5) * 1.6,
+          vy: dy * 0.14 + (Math.random() - 0.5) * 1.6,
+          radius: 32 + Math.random() * 24,
+          maxRadius: 130 + Math.random() * 60,
+          growthRate: 1.3 + Math.random() * 0.9,
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 0.035,
+          hue: globalHue,
+          life: 1.0,
+          decay: 0.011 + Math.random() * 0.007,
+        })
       }
     }
 
-    const updatePointer = (clientX, clientY) => {
-      pointer.targetX = clientX
-      pointer.targetY = clientY
+    // Emit smoke trail smoothly between pointer movements
+    const addSmokeMovement = (newX, newY) => {
+      const dx = newX - pointer.lastX
+      const dy = newY - pointer.lastY
+      const dist = Math.hypot(dx, dy)
+      const steps = Math.min(Math.max(Math.floor(dist / 16), 1), 6)
+
+      for (let i = 1; i <= steps; i++) {
+        const interpX = pointer.lastX + (dx * i) / steps
+        const interpY = pointer.lastY + (dy * i) / steps
+        spawnSmokePuff(interpX, interpY, dx, dy, 1)
+      }
+
+      pointer.lastX = newX
+      pointer.lastY = newY
+      pointer.x = newX
+      pointer.y = newY
       pointer.active = true
-      triggerRipple(clientX, clientY)
     }
 
+    // Ambient floating wisps when idle
+    let time = 0
+
     const onMouseMove = (e) => {
-      updatePointer(e.clientX, e.clientY)
+      addSmokeMovement(e.clientX, e.clientY)
     }
 
     const onMouseLeave = () => {
@@ -72,14 +94,21 @@ function InteractiveGlowCanvas() {
     }
 
     const onTouchStart = (e) => {
-      if (e.touches.length > 0) {
-        updatePointer(e.touches[0].clientX, e.touches[0].clientY)
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i]
+        pointer.lastX = touch.clientX
+        pointer.lastY = touch.clientY
+        pointer.x = touch.clientX
+        pointer.y = touch.clientY
+        pointer.active = true
+        spawnSmokePuff(touch.clientX, touch.clientY, 0, 0, 3)
       }
     }
 
     const onTouchMove = (e) => {
-      if (e.touches.length > 0) {
-        updatePointer(e.touches[0].clientX, e.touches[0].clientY)
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i]
+        addSmokeMovement(touch.clientX, touch.clientY)
       }
     }
 
@@ -95,190 +124,120 @@ function InteractiveGlowCanvas() {
     window.addEventListener('touchcancel', onTouchEnd, { passive: true })
 
     const render = () => {
-      time += 0.025
+      time += 0.02
 
-      // Smooth pointer spring physics
-      const dx = pointer.targetX - pointer.x
-      const dy = pointer.targetY - pointer.y
-      pointer.vx = pointer.vx * 0.76 + dx * 0.16
-      pointer.vy = pointer.vy * 0.76 + dy * 0.16
-      pointer.x += pointer.vx
-      pointer.y += pointer.vy
-
-      // Idle subtle breathing motion
-      if (!pointer.active) {
-        pointer.targetX = width / 2 + Math.sin(time * 0.7) * (width * 0.22)
-        pointer.targetY = height / 2 + Math.cos(time * 0.5) * (height * 0.16)
-        if (Math.random() < 0.035) {
-          triggerRipple(pointer.x, pointer.y)
-        }
-      }
-
-      // Pure black canvas background
-      ctx.fillStyle = '#000000'
+      // Pure pitch-black background clear
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)'
       ctx.fillRect(0, 0, width, height)
 
-      // Additive blending for luminous laser effects
+      // Additive fluid blending so overlapping colors mix like glowing dyes
       ctx.globalCompositeOperation = 'lighter'
 
-      // 1. Soft atmospheric neon aura under cursor/finger
-      const auraRadius = pointer.active ? 240 : 160
-      const auraGrad = ctx.createRadialGradient(
-        pointer.x,
-        pointer.y,
-        0,
-        pointer.x,
-        pointer.y,
-        auraRadius
-      )
-      auraGrad.addColorStop(0, `hsla(${globalHue}, 100%, 65%, 0.36)`)
-      auraGrad.addColorStop(0.35, `hsla(${(globalHue + 50) % 360}, 100%, 60%, 0.18)`)
-      auraGrad.addColorStop(0.7, `hsla(${(globalHue + 110) % 360}, 95%, 55%, 0.05)`)
-      auraGrad.addColorStop(1, 'transparent')
+      // Idle gentle smoke generator
+      if (!pointer.active && Math.random() < 0.2) {
+        const idleX = width / 2 + Math.sin(time * 0.8) * (width * 0.25)
+        const idleY = height / 2 + Math.cos(time * 0.6) * (height * 0.18)
+        spawnSmokePuff(idleX, idleY, Math.cos(time) * 1.5, Math.sin(time) * 1.5, 1)
+      }
 
-      ctx.fillStyle = auraGrad
-      ctx.beginPath()
-      ctx.arc(pointer.x, pointer.y, auraRadius, 0, Math.PI * 2)
-      ctx.fill()
+      // Render glowing liquid smoke puffs
+      for (let i = puffs.length - 1; i >= 0; i--) {
+        const p = puffs[i]
 
-      // 2. Render expanding neon shockwave rings
-      for (let i = ripples.length - 1; i >= 0; i--) {
-        const r = ripples[i]
-        r.radius += r.speed
-        r.alpha *= 0.955
+        // Physics: drift, expand, spin, and fade
+        p.x += p.vx
+        p.y += p.vy
+        p.vx *= 0.982
+        p.vy *= 0.982
+        p.angle += p.spin
+        p.radius = Math.min(p.maxRadius, p.radius + p.growthRate)
+        p.life -= p.decay
 
-        if (r.alpha < 0.02 || r.radius > r.maxRadius) {
-          ripples.splice(i, 1)
+        if (p.life <= 0) {
+          puffs.splice(i, 1)
           continue
         }
 
+        const alpha = p.life * 0.38
+        const r = p.radius
+
+        // Render multi-lobe billowy smoke cloud
         ctx.save()
-        ctx.strokeStyle = `hsla(${r.hue}, 100%, 72%, ${r.alpha})`
-        ctx.shadowColor = `hsla(${r.hue}, 100%, 65%, ${r.alpha})`
-        ctx.shadowBlur = 14
-        ctx.lineWidth = Math.max(1, 2.5 * r.alpha)
-        ctx.beginPath()
-        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2)
-        ctx.stroke()
+        ctx.translate(p.x, p.y)
+        ctx.rotate(p.angle)
+
+        // 3 organic cloud lobes per puff for authentic billowing velvet smoke
+        const lobes = [
+          { ox: 0, oy: 0, sizeScale: 1.0 },
+          { ox: r * 0.32, oy: -r * 0.22, sizeScale: 0.78 },
+          { ox: -r * 0.26, oy: r * 0.28, sizeScale: 0.72 },
+        ]
+
+        for (let l = 0; l < lobes.length; l++) {
+          const lobe = lobes[l]
+          const lobeR = r * lobe.sizeScale
+
+          const grad = ctx.createRadialGradient(
+            lobe.ox,
+            lobe.oy,
+            0,
+            lobe.ox,
+            lobe.oy,
+            lobeR
+          )
+
+          grad.addColorStop(0, `hsla(${p.hue}, 100%, 65%, ${alpha * 0.9})`)
+          grad.addColorStop(0.35, `hsla(${(p.hue + 35) % 360}, 95%, 55%, ${alpha * 0.5})`)
+          grad.addColorStop(0.72, `hsla(${(p.hue + 75) % 360}, 90%, 45%, ${alpha * 0.14})`)
+          grad.addColorStop(1, 'transparent')
+
+          ctx.fillStyle = grad
+          ctx.beginPath()
+          ctx.arc(lobe.ox, lobe.oy, lobeR, 0, Math.PI * 2)
+          ctx.fill()
+        }
+
         ctx.restore()
       }
 
-      // 3. Render 3D Quantum Gravity Grid (Horizontal & Vertical laser contour lines)
-      const stepY = 48
-      const stepX = 52
-      const influenceRadius = 230
-
-      // Horizontal wave contours
-      const numLinesY = Math.ceil(height / stepY) + 2
-      for (let j = 0; j < numLinesY; j++) {
-        const baseY = j * stepY
-
-        ctx.beginPath()
-        let isStarted = false
-
-        for (let x = 0; x <= width + 40; x += 24) {
-          const dist = Math.hypot(x - pointer.x, baseY - pointer.y)
-          let warpY = 0
-
-          // Interactive magnetic gravity warp
-          if (dist < influenceRadius) {
-            const factor = Math.cos((dist / influenceRadius) * (Math.PI / 2))
-            warpY = factor * factor * 38 * (pointer.y > baseY ? 0.7 : -0.7)
-          }
-
-          // Gentle ambient wave
-          const ambientWave = Math.sin(time * 1.5 + x * 0.005 + j * 0.4) * 5
-          const y = baseY + warpY + ambientWave
-
-          if (!isStarted) {
-            ctx.moveTo(x, y)
-            isStarted = true
-          } else {
-            ctx.lineTo(x, y)
-          }
-        }
-
-        // Check proximity to pointer for vibrant neon lighting
-        const lineDist = Math.abs(baseY - pointer.y)
-        if (lineDist < influenceRadius) {
-          const proximity = 1 - lineDist / influenceRadius
-          ctx.strokeStyle = `hsla(${(globalHue + j * 8) % 360}, 100%, 68%, ${0.15 + proximity * 0.55})`
-          ctx.lineWidth = 1 + proximity * 1.8
-          ctx.shadowColor = `hsla(${(globalHue + j * 8) % 360}, 100%, 65%, ${proximity * 0.7})`
-          ctx.shadowBlur = proximity * 12
-        } else {
-          ctx.strokeStyle = 'rgba(99, 102, 241, 0.07)'
-          ctx.lineWidth = 1
-          ctx.shadowBlur = 0
-        }
-
-        ctx.stroke()
-      }
-
-      // Vertical laser mesh lines
-      const numLinesX = Math.ceil(width / stepX) + 2
-      for (let i = 0; i < numLinesX; i++) {
-        const baseX = i * stepX
-
-        ctx.beginPath()
-        let isStarted = false
-
-        for (let y = 0; y <= height + 40; y += 28) {
-          const dist = Math.hypot(baseX - pointer.x, y - pointer.y)
-          let warpX = 0
-
-          if (dist < influenceRadius) {
-            const factor = Math.cos((dist / influenceRadius) * (Math.PI / 2))
-            warpX = factor * factor * 28 * (pointer.x > baseX ? 0.6 : -0.6)
-          }
-
-          const x = baseX + warpX
-
-          if (!isStarted) {
-            ctx.moveTo(x, y)
-            isStarted = true
-          } else {
-            ctx.lineTo(x, y)
-          }
-        }
-
-        const lineDist = Math.abs(baseX - pointer.x)
-        if (lineDist < influenceRadius) {
-          const proximity = 1 - lineDist / influenceRadius
-          ctx.strokeStyle = `hsla(${(globalHue + i * 8 + 60) % 360}, 100%, 68%, ${0.12 + proximity * 0.45})`
-          ctx.lineWidth = 1 + proximity * 1.5
-          ctx.shadowColor = `hsla(${(globalHue + i * 8 + 60) % 360}, 100%, 65%, ${proximity * 0.6})`
-          ctx.shadowBlur = proximity * 10
-        } else {
-          ctx.strokeStyle = 'rgba(99, 102, 241, 0.05)'
-          ctx.lineWidth = 1
-          ctx.shadowBlur = 0
-        }
-
-        ctx.stroke()
-      }
-
-      // 4. Luminous focal lens orb right at cursor/touch
+      // Soft luminous aura right at pointer contact point
       if (pointer.active) {
         ctx.save()
+        const auraRadius = 180
+        const auraGrad = ctx.createRadialGradient(
+          pointer.x,
+          pointer.y,
+          0,
+          pointer.x,
+          pointer.y,
+          auraRadius
+        )
+        auraGrad.addColorStop(0, `hsla(${globalHue}, 100%, 75%, 0.45)`)
+        auraGrad.addColorStop(0.35, `hsla(${(globalHue + 40) % 360}, 100%, 60%, 0.2)`)
+        auraGrad.addColorStop(0.7, `hsla(${(globalHue + 90) % 360}, 95%, 50%, 0.05)`)
+        auraGrad.addColorStop(1, 'transparent')
+
+        ctx.fillStyle = auraGrad
+        ctx.beginPath()
+        ctx.arc(pointer.x, pointer.y, auraRadius, 0, Math.PI * 2)
+        ctx.fill()
+
+        // Core glowing ink drop
         const coreGrad = ctx.createRadialGradient(
           pointer.x,
           pointer.y,
           0,
           pointer.x,
           pointer.y,
-          32
+          36
         )
-        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
-        coreGrad.addColorStop(0.35, `hsla(${globalHue}, 100%, 75%, 0.75)`)
-        coreGrad.addColorStop(0.7, `hsla(${(globalHue + 40) % 360}, 100%, 65%, 0.3)`)
+        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.92)')
+        coreGrad.addColorStop(0.4, `hsla(${globalHue}, 100%, 70%, 0.7)`)
         coreGrad.addColorStop(1, 'transparent')
 
         ctx.fillStyle = coreGrad
-        ctx.shadowColor = `hsla(${globalHue}, 100%, 65%, 1)`
-        ctx.shadowBlur = 20
         ctx.beginPath()
-        ctx.arc(pointer.x, pointer.y, 32, 0, Math.PI * 2)
+        ctx.arc(pointer.x, pointer.y, 36, 0, Math.PI * 2)
         ctx.fill()
         ctx.restore()
       }
@@ -286,6 +245,10 @@ function InteractiveGlowCanvas() {
       ctx.globalCompositeOperation = 'source-over'
       animationFrameId = requestAnimationFrame(render)
     }
+
+    // Initial background fill
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(0, 0, width, height)
 
     render()
 
