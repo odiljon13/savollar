@@ -19,13 +19,14 @@ function InteractiveGlowCanvas() {
     }
     window.addEventListener('resize', handleResize)
 
-    // Primary pointer and smooth lagging secondary follower (Stripe / Vercel AAA Standard)
+    // Primary pointer and physics-based lagging secondary follower
     const pointer = {
       x: width / 2,
       y: height / 2,
       targetX: width / 2,
       targetY: height / 2,
       active: false,
+      lastActiveTime: Date.now(),
     }
 
     const follower = {
@@ -33,54 +34,83 @@ function InteractiveGlowCanvas() {
       y: height / 2,
     }
 
-    // Smooth elegant light path (zero scatter, clean dissolution)
-    const trail = []
-    const maxTrail = 42
-    let globalHue = 220
+    // Laser trail points - zero scatter, continuous connected ribbon
+    let points = []
+    let globalHue = 200
     let time = 0
+    let lastPoint = null
 
-    const updatePointer = (clientX, clientY) => {
-      globalHue = (globalHue + 1.8) % 360
-      pointer.targetX = clientX
-      pointer.targetY = clientY
+    const addPoint = (x, y) => {
+      globalHue = (globalHue + 1.2) % 360
+      pointer.targetX = x
+      pointer.targetY = y
       pointer.active = true
+      pointer.lastActiveTime = Date.now()
 
-      trail.push({
-        x: clientX,
-        y: clientY,
+      // If distance from last point is significant, interpolate to ensure unbroken silky beam
+      if (lastPoint) {
+        const dx = x - lastPoint.x
+        const dy = y - lastPoint.y
+        const dist = Math.hypot(dx, dy)
+        if (dist > 18) {
+          const steps = Math.min(Math.floor(dist / 14), 6)
+          for (let s = 1; s <= steps; s++) {
+            const t = s / (steps + 1)
+            points.push({
+              x: lastPoint.x + dx * t,
+              y: lastPoint.y + dy * t,
+              hue: globalHue,
+              alpha: 1.0,
+              // Slow decay: stays visible for ~6-8 seconds without scattering
+              decay: 0.0038,
+            })
+          }
+        }
+      }
+
+      points.push({
+        x,
+        y,
         hue: globalHue,
-        radius: 65,
-        alpha: 0.72,
-        decay: 0.022,
+        alpha: 1.0,
+        decay: 0.0038,
       })
 
-      if (trail.length > maxTrail) {
-        trail.shift()
+      lastPoint = { x, y }
+
+      // Cap points to prevent memory accumulation while keeping rich persistent path
+      if (points.length > 220) {
+        points.splice(0, points.length - 220)
       }
     }
 
     const onMouseMove = (e) => {
-      updatePointer(e.clientX, e.clientY)
+      addPoint(e.clientX, e.clientY)
     }
 
     const onMouseLeave = () => {
       pointer.active = false
+      lastPoint = null
     }
 
     const onTouchStart = (e) => {
       if (e.touches.length > 0) {
-        updatePointer(e.touches[0].clientX, e.touches[0].clientY)
+        const touch = e.touches[0]
+        lastPoint = null
+        addPoint(touch.clientX, touch.clientY)
       }
     }
 
     const onTouchMove = (e) => {
       if (e.touches.length > 0) {
-        updatePointer(e.touches[0].clientX, e.touches[0].clientY)
+        const touch = e.touches[0]
+        addPoint(touch.clientX, touch.clientY)
       }
     }
 
     const onTouchEnd = () => {
       pointer.active = false
+      lastPoint = null
     }
 
     window.addEventListener('mousemove', onMouseMove, { passive: true })
@@ -91,32 +121,35 @@ function InteractiveGlowCanvas() {
     window.addEventListener('touchcancel', onTouchEnd, { passive: true })
 
     const render = () => {
-      time += 0.018
+      time += 0.02
 
-      // Smooth spring interpolation for primary pointer and lagging follower
+      const isUserInactive = Date.now() - pointer.lastActiveTime > 2500
+
+      // Smooth interpolation for primary pointer and lagging follower
       if (pointer.active) {
-        pointer.x += (pointer.targetX - pointer.x) * 0.14
-        pointer.y += (pointer.targetY - pointer.y) * 0.14
-      } else {
-        // Calm organic floating orbit when idle
-        const idleX = width / 2 + Math.sin(time * 0.7) * (width * 0.22)
-        const idleY = height / 2 + Math.cos(time * 0.5) * (height * 0.18)
-        pointer.x += (idleX - pointer.x) * 0.05
-        pointer.y += (idleY - pointer.y) * 0.05
+        pointer.x += (pointer.targetX - pointer.x) * 0.18
+        pointer.y += (pointer.targetY - pointer.y) * 0.18
+      } else if (isUserInactive) {
+        // Majestic ambient floating orbit when user is reading or idle
+        const orbitX = width / 2 + Math.cos(time * 0.6) * (width * 0.28)
+        const orbitY = height / 2 + Math.sin(time * 0.9) * (height * 0.18)
+        pointer.x += (orbitX - pointer.x) * 0.04
+        pointer.y += (orbitY - pointer.y) * 0.04
+        globalHue = (globalHue + 0.35) % 360
       }
 
-      // Follower creates gorgeous iridescent dual-tone chromatic depth
-      follower.x += (pointer.x - follower.x) * 0.075
-      follower.y += (pointer.y - follower.y) * 0.075
+      // Harmonic secondary follower creates dual-tone chromatic aberration depth
+      follower.x += (pointer.x - follower.x) * 0.08
+      follower.y += (pointer.y - follower.y) * 0.08
 
-      // Pure pitch-black canvas background
+      // 1. Clear with true pitch-black background
       ctx.fillStyle = '#000000'
       ctx.fillRect(0, 0, width, height)
 
       ctx.globalCompositeOperation = 'lighter'
 
-      // 1. Secondary follower ambient aura (lagging chromatic glow)
-      const secRadius = 360
+      // 2. Secondary lagging ambient chromatic aura (dual-tone harmonic shift)
+      const secRadius = 380
       const secGrad = ctx.createRadialGradient(
         follower.x,
         follower.y,
@@ -125,10 +158,10 @@ function InteractiveGlowCanvas() {
         follower.y,
         secRadius
       )
-      const followerHue = (globalHue + 60) % 360
-      secGrad.addColorStop(0, `hsla(${followerHue}, 100%, 65%, 0.22)`)
-      secGrad.addColorStop(0.4, `hsla(${(followerHue + 40) % 360}, 95%, 55%, 0.1)`)
-      secGrad.addColorStop(0.75, `hsla(${(followerHue + 80) % 360}, 90%, 45%, 0.03)`)
+      const secHue = (globalHue + 75) % 360
+      secGrad.addColorStop(0, `hsla(${secHue}, 100%, 65%, 0.28)`)
+      secGrad.addColorStop(0.35, `hsla(${(secHue + 40) % 360}, 95%, 55%, 0.12)`)
+      secGrad.addColorStop(0.7, `hsla(${(secHue + 80) % 360}, 90%, 45%, 0.035)`)
       secGrad.addColorStop(1, 'transparent')
 
       ctx.fillStyle = secGrad
@@ -136,8 +169,8 @@ function InteractiveGlowCanvas() {
       ctx.arc(follower.x, follower.y, secRadius, 0, Math.PI * 2)
       ctx.fill()
 
-      // 2. Primary interactive chromatic spotlight
-      const primRadius = 380
+      // 3. Primary interactive chromatic aura (wide, rich, generous size)
+      const primRadius = 420
       const primGrad = ctx.createRadialGradient(
         pointer.x,
         pointer.y,
@@ -146,9 +179,9 @@ function InteractiveGlowCanvas() {
         pointer.y,
         primRadius
       )
-      primGrad.addColorStop(0, `hsla(${globalHue}, 100%, 70%, 0.35)`)
-      primGrad.addColorStop(0.35, `hsla(${(globalHue + 45) % 360}, 100%, 60%, 0.16)`)
-      primGrad.addColorStop(0.75, `hsla(${(globalHue + 90) % 360}, 95%, 50%, 0.04)`)
+      primGrad.addColorStop(0, `hsla(${globalHue}, 100%, 72%, 0.42)`)
+      primGrad.addColorStop(0.3, `hsla(${(globalHue + 40) % 360}, 100%, 62%, 0.2)`)
+      primGrad.addColorStop(0.65, `hsla(${(globalHue + 85) % 360}, 95%, 52%, 0.06)`)
       primGrad.addColorStop(1, 'transparent')
 
       ctx.fillStyle = primGrad
@@ -156,49 +189,79 @@ function InteractiveGlowCanvas() {
       ctx.arc(pointer.x, pointer.y, primRadius, 0, Math.PI * 2)
       ctx.fill()
 
-      // 3. Smooth non-scattering light trail along movement path
-      for (let i = trail.length - 1; i >= 0; i--) {
-        const pt = trail[i]
-        pt.alpha -= pt.decay
-
-        if (pt.alpha <= 0) {
-          trail.splice(i, 1)
-          continue
+      // 4. Update and render the continuous non-scattering Laser Ribbon
+      // Age points smoothly (fade in place without moving or scattering)
+      for (let i = points.length - 1; i >= 0; i--) {
+        points[i].alpha -= points[i].decay
+        if (points[i].alpha <= 0) {
+          points.splice(i, 1)
         }
-
-        const r = pt.radius * (0.5 + 0.5 * pt.alpha)
-        const tGrad = ctx.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, r)
-        tGrad.addColorStop(0, `hsla(${pt.hue}, 100%, 72%, ${pt.alpha * 0.6})`)
-        tGrad.addColorStop(0.5, `hsla(${(pt.hue + 30) % 360}, 95%, 60%, ${pt.alpha * 0.25})`)
-        tGrad.addColorStop(1, 'transparent')
-
-        ctx.fillStyle = tGrad
-        ctx.beginPath()
-        ctx.arc(pt.x, pt.y, r, 0, Math.PI * 2)
-        ctx.fill()
       }
 
-      // 4. Luminous focal lens orb under active cursor / finger
-      if (pointer.active) {
-        const coreRadius = 42
-        const coreGrad = ctx.createRadialGradient(
-          pointer.x,
-          pointer.y,
-          0,
-          pointer.x,
-          pointer.y,
-          coreRadius
-        )
-        coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)')
-        coreGrad.addColorStop(0.35, `hsla(${globalHue}, 100%, 75%, 0.75)`)
-        coreGrad.addColorStop(0.7, `hsla(${(globalHue + 35) % 360}, 100%, 60%, 0.3)`)
-        coreGrad.addColorStop(1, 'transparent')
+      if (points.length > 2) {
+        // Render 3 distinct glowing laser layers along the drawn path:
+        // A. Wide radiant ambient neon bloom (80px)
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
 
-        ctx.fillStyle = coreGrad
-        ctx.beginPath()
-        ctx.arc(pointer.x, pointer.y, coreRadius, 0, Math.PI * 2)
-        ctx.fill()
+        for (let i = 0; i < points.length - 1; i++) {
+          const p1 = points[i]
+          const p2 = points[i + 1]
+          const avgAlpha = (p1.alpha + p2.alpha) * 0.5
+          const avgHue = (p1.hue + p2.hue) * 0.5
+
+          // Wide outer glow
+          ctx.beginPath()
+          ctx.moveTo(p1.x, p1.y)
+          ctx.lineTo(p2.x, p2.y)
+          ctx.lineWidth = 76 * avgAlpha
+          ctx.strokeStyle = `hsla(${avgHue}, 100%, 60%, ${avgAlpha * 0.18})`
+          ctx.stroke()
+
+          // Vibrant mid electric beam
+          ctx.beginPath()
+          ctx.moveTo(p1.x, p1.y)
+          ctx.lineTo(p2.x, p2.y)
+          ctx.lineWidth = 28 * avgAlpha
+          ctx.strokeStyle = `hsla(${(avgHue + 20) % 360}, 100%, 70%, ${avgAlpha * 0.5})`
+          ctx.stroke()
+
+          // Razor-sharp hyper-bright white/cyan laser core
+          ctx.beginPath()
+          ctx.moveTo(p1.x, p1.y)
+          ctx.lineTo(p2.x, p2.y)
+          ctx.lineWidth = 6 * avgAlpha
+          ctx.strokeStyle = `rgba(255, 255, 255, ${avgAlpha * 0.95})`
+          ctx.stroke()
+        }
       }
+
+      // 5. Focal radiant energy orb directly under active pointer / touch
+      const orbRadius = 48
+      const orbGrad = ctx.createRadialGradient(
+        pointer.x,
+        pointer.y,
+        0,
+        pointer.x,
+        pointer.y,
+        orbRadius
+      )
+      orbGrad.addColorStop(0, 'rgba(255, 255, 255, 1)')
+      orbGrad.addColorStop(0.28, `hsla(${globalHue}, 100%, 78%, 0.9)`)
+      orbGrad.addColorStop(0.65, `hsla(${(globalHue + 40) % 360}, 100%, 60%, 0.35)`)
+      orbGrad.addColorStop(1, 'transparent')
+
+      ctx.fillStyle = orbGrad
+      ctx.beginPath()
+      ctx.arc(pointer.x, pointer.y, orbRadius, 0, Math.PI * 2)
+      ctx.fill()
+
+      // 6. Delicate precision ring around cursor
+      ctx.beginPath()
+      ctx.arc(pointer.x, pointer.y, 22, 0, Math.PI * 2)
+      ctx.lineWidth = 1.8
+      ctx.strokeStyle = `hsla(${globalHue}, 100%, 85%, 0.7)`
+      ctx.stroke()
 
       ctx.globalCompositeOperation = 'source-over'
       animationFrameId = requestAnimationFrame(render)
