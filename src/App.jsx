@@ -1062,6 +1062,8 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [selectedOption, setSelectedOption] = useState(null)
   const [showResult, setShowResult] = useState(false)
+  const [correctCount, setCorrectCount] = useState(0)
+  const [wrongCount, setWrongCount] = useState(0)
   const [isRegistered, setIsRegistered] = useState(false)
 
   useEffect(() => {
@@ -1091,6 +1093,8 @@ export default function App() {
   const currentQuestion = useMemo(() => quizQuestions[selectedCategory][currentIndex], [currentIndex, quizQuestions, selectedCategory])
   const currentBlock = Math.floor(currentIndex / BLOCK_SIZE) + 1
   const currentBlockProgress = ((currentIndex % BLOCK_SIZE) + 1) / BLOCK_SIZE * 100
+  const totalAnswered = correctCount + wrongCount
+  const percentage = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0
   const categoryCards = [
     { key: 'javascript', label: 'JavaScript', icon: '⚡', count: quizQuestions.javascript.length },
     { key: 'python', label: 'Python', icon: '🐍', count: quizQuestions.python.length },
@@ -1168,7 +1172,17 @@ export default function App() {
   }
 
   const handleAnswer = (option) => {
+    if (selectedOption !== null) return
     setSelectedOption(option)
+    if (option === currentQuestion.answer) {
+      setCorrectCount((prev) => prev + 1)
+    } else {
+      setWrongCount((prev) => prev + 1)
+    }
+  }
+
+  const finishQuiz = () => {
+    setShowResult(true)
   }
 
   useEffect(() => {
@@ -1190,6 +1204,8 @@ export default function App() {
     setQuizQuestions(buildQuestionBank())
     setCurrentIndex(0)
     setSelectedOption(null)
+    setCorrectCount(0)
+    setWrongCount(0)
     setShowResult(false)
   }
 
@@ -1197,6 +1213,8 @@ export default function App() {
     setSelectedCategory(category)
     setCurrentIndex(0)
     setSelectedOption(null)
+    setCorrectCount(0)
+    setWrongCount(0)
     setShowResult(false)
   }
 
@@ -1401,11 +1419,34 @@ export default function App() {
 
               {!showResult ? (
                 <>
-                  <div className="progress-head">
-                    <div className="progress-caption">
-                      <span>🚀</span> Bosqich {currentBlock} • Har 10 ta savol qiyinlashadi
+                  <div className="quiz-status-header">
+                    <div className="progress-head">
+                      <div className="progress-caption">
+                        <span>🚀</span> Bosqich {currentBlock} • Savol {currentIndex + 1}
+                      </div>
+                    </div>
+                    <div className="live-score-pill-group">
+                      <div className="score-pill correct-pill" title="Topilgan to'g'ri javoblar">
+                        <span className="pill-dot">✓</span>
+                        <span>To'g'ri: <strong>{correctCount}</strong></span>
+                      </div>
+                      <div className="score-pill wrong-pill" title="Topa olinmagan (noto'g'ri) javoblar">
+                        <span className="pill-dot">✕</span>
+                        <span>Noto'g'ri: <strong>{wrongCount}</strong></span>
+                      </div>
+                      {totalAnswered > 0 && (
+                        <button
+                          type="button"
+                          className="finish-early-btn"
+                          onClick={finishQuiz}
+                          title="Testni yakunlash va natijani ko'rish"
+                        >
+                          <span>🏁 Natijani ko'rish</span>
+                        </button>
+                      )}
                     </div>
                   </div>
+
                   <div className="progress-track">
                     <div className="progress-bar" style={{ width: `${currentBlockProgress}%` }} />
                   </div>
@@ -1465,15 +1506,69 @@ export default function App() {
                 </>
               ) : (
                 <div className="result-box">
-                  <div className="trophy-display">🏆</div>
-                  <span className="badge">Natija</span>
-                  <h2>Test Yakunlandi!</h2>
-                  <p>
-                    Ushbu bo'limdagi savollarni muvaffaqiyatli yakunladingiz. Qayta boshlash orqali yangi random ketma-ketlikdagi savollarni ko'rishingiz mumkin.
+                  <div className="trophy-display">
+                    {percentage >= 80 ? '🏆' : percentage >= 50 ? '🎯' : '💡'}
+                  </div>
+                  <span className="badge">Viktorina Natijalari</span>
+                  <h2>
+                    {percentage >= 80 ? 'Ajoyib Natija!' : percentage >= 50 ? 'Yaxshi Urinish!' : 'Test Yakunlandi!'}
+                  </h2>
+                  <p className="result-subtitle">
+                    Siz ushbu bo'limda jami <strong>{totalAnswered} ta</strong> savolga javob berdingiz:
                   </p>
-                  <button className="reset-btn" onClick={resetQuiz}>
-                    <span>🔄 Qayta boshlash</span>
-                  </button>
+
+                  <div className="result-stats-grid">
+                    <div className="stat-card stat-correct">
+                      <div className="stat-icon-wrap">✓</div>
+                      <div className="stat-info">
+                        <span className="stat-number">{correctCount}</span>
+                        <span className="stat-label">Topilgan to'g'ri savollar</span>
+                      </div>
+                    </div>
+
+                    <div className="stat-card stat-wrong">
+                      <div className="stat-icon-wrap">✕</div>
+                      <div className="stat-info">
+                        <span className="stat-number">{wrongCount}</span>
+                        <span className="stat-label">Topa olinmagan savollar</span>
+                      </div>
+                    </div>
+
+                    <div className="stat-card stat-total">
+                      <div className="stat-icon-wrap">📋</div>
+                      <div className="stat-info">
+                        <span className="stat-number">{totalAnswered}</span>
+                        <span className="stat-label">Jami ishlangan savollar</span>
+                      </div>
+                    </div>
+
+                    <div className="stat-card stat-percent">
+                      <div className="stat-icon-wrap">📊</div>
+                      <div className="stat-info">
+                        <span className="stat-number">{percentage}%</span>
+                        <span className="stat-label">Aniqlik foizi</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {totalAnswered > 0 && (
+                    <div className="result-ratio-bar-box">
+                      <div className="ratio-labels">
+                        <span className="ratio-text-green">✓ {correctCount} ta to'g'ri ({percentage}%)</span>
+                        <span className="ratio-text-red">✕ {wrongCount} ta topilmadi ({100 - percentage}%)</span>
+                      </div>
+                      <div className="ratio-track">
+                        <div className="ratio-fill-green" style={{ width: `${percentage}%` }} />
+                        <div className="ratio-fill-red" style={{ width: `${100 - percentage}%` }} />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="result-actions-row">
+                    <button className="reset-btn" onClick={resetQuiz}>
+                      <span>🔄 Qayta boshlash</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </>
