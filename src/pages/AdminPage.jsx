@@ -7,6 +7,7 @@ import {
   getCustomQuestions, 
   addCustomQuestion, 
   deleteCustomQuestion, 
+  updateCustomQuestion,
   shuffle,
   buildQuestionBank
 } from '../data/questions';
@@ -33,6 +34,13 @@ const AdminPage = () => {
 
   // Questions List
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Edit Question
+  const [editingQuestion, setEditingQuestion] = useState(null);
+  const [editCategory, setEditCategory] = useState('');
+  const [editQuestionText, setEditQuestionText] = useState('');
+  const [editAnswer, setEditAnswer] = useState('');
+  const [editOptions, setEditOptions] = useState(['', '', '', '', '']);
 
   useEffect(() => {
     if (!isAdmin) {
@@ -112,6 +120,44 @@ const AdminPage = () => {
     if (index === 0) {
       setAnswer(value);
     }
+  };
+
+  const startEditing = (q) => {
+    setEditingQuestion(q);
+    setEditCategory(q.type || '');
+    setEditQuestionText(q.question);
+    setEditAnswer(q.answer);
+    setEditOptions(q.options && q.options.length === 5 ? [...q.options] : [q.answer, '', '', '', '']);
+  };
+
+  const handleEditOptionChange = (index, value) => {
+    const newOptions = [...editOptions];
+    newOptions[index] = value;
+    setEditOptions(newOptions);
+    if (index === 0) {
+      setEditAnswer(value);
+    }
+  };
+
+  const handleSaveEdit = () => {
+    if (!editQuestionText.trim() || !editAnswer.trim() || editOptions.some(opt => !opt.trim())) {
+      alert('Iltimos, barcha maydonlarni to\'ldiring!');
+      return;
+    }
+    const categoryObj = CATEGORIES.find(c => c.key === editCategory);
+    updateCustomQuestion(editingQuestion.id, {
+      type: editCategory,
+      category: categoryObj ? categoryObj.label : editingQuestion.category,
+      question: editQuestionText.trim(),
+      answer: editAnswer.trim(),
+      options: shuffle([...editOptions.map(opt => opt.trim())])
+    });
+    setEditingQuestion(null);
+    loadData();
+  };
+
+  const handleCancelEdit = () => {
+    setEditingQuestion(null);
   };
 
   const tabs = [
@@ -240,19 +286,84 @@ const AdminPage = () => {
                 ) : (
                   <div className="questions-list" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                     {filteredQuestions.map(q => (
-                      <div key={q.id} className="question-item glass-card" style={{ padding: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                          <span className="badge" style={{ background: 'rgba(255,255,255,0.2)', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8em' }}>{q.category}</span>
-                          <h4 style={{ margin: '10px 0' }}>{q.question}</h4>
-                          <p style={{ margin: '0', color: '#4caf50' }}>To'g'ri javob: {q.answer}</p>
-                        </div>
-                        <button 
-                          className="btn-danger" 
-                          onClick={() => handleDeleteQuestion(q.id)} 
-                          style={{ padding: '8px 15px', background: '#f44336', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-                        >
-                          O'chirish
-                        </button>
+                      <div key={q.id} className="question-item glass-card" style={{ padding: '15px' }}>
+                        {editingQuestion && editingQuestion.id === q.id ? (
+                          // Edit form
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Kategoriya</label>
+                              <select 
+                                value={editCategory} 
+                                onChange={e => setEditCategory(e.target.value)}
+                                style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+                              >
+                                {CATEGORIES.map(c => (
+                                  <option key={c.key} value={c.key}>{c.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Savol matni</label>
+                              <textarea 
+                                value={editQuestionText} 
+                                onChange={e => setEditQuestionText(e.target.value)} 
+                                rows={3}
+                                style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.5)', color: 'white', resize: 'vertical' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Variantlar (birinchisi to'g'ri javob)</label>
+                              {editOptions.map((opt, i) => (
+                                <input 
+                                  key={i} 
+                                  type="text" 
+                                  value={opt} 
+                                  onChange={e => handleEditOptionChange(i, e.target.value)} 
+                                  placeholder={`${i + 1}-variant ${i === 0 ? "(To'g'ri javob)" : ""}`} 
+                                  style={{ marginBottom: '8px', display: 'block', width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(0,0,0,0.5)', color: 'white' }}
+                                />
+                              ))}
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                              <button 
+                                onClick={handleSaveEdit} 
+                                style={{ padding: '8px 20px', background: '#4caf50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+                              >
+                                ✅ Saqlash
+                              </button>
+                              <button 
+                                onClick={handleCancelEdit} 
+                                style={{ padding: '8px 20px', background: '#666', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                              >
+                                ❌ Bekor qilish
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          // Display mode
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <span className="badge" style={{ background: 'rgba(255,255,255,0.2)', padding: '5px 10px', borderRadius: '15px', fontSize: '0.8em' }}>{q.category}</span>
+                              <h4 style={{ margin: '10px 0' }}>{q.question}</h4>
+                              <p style={{ margin: '0', color: '#4caf50' }}>To'g'ri javob: {q.answer}</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                              <button 
+                                onClick={() => startEditing(q)} 
+                                style={{ padding: '8px 15px', background: '#ff9800', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                              >
+                                ✏️ Tahrirlash
+                              </button>
+                              <button 
+                                className="btn-danger" 
+                                onClick={() => handleDeleteQuestion(q.id)} 
+                                style={{ padding: '8px 15px', background: '#f44336', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
+                              >
+                                O'chirish
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -267,25 +378,47 @@ const AdminPage = () => {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'rgba(255,255,255,0.1)', textAlign: 'left' }}>
+                        <th style={{ padding: '12px' }}>Rasm</th>
                         <th style={{ padding: '12px' }}>Username</th>
                         <th style={{ padding: '12px' }}>Ism Familiya</th>
                         <th style={{ padding: '12px' }}>Rol</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {users.map((u, i) => (
-                        <tr key={u.username || i} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                          <td style={{ padding: '12px' }}>{u.username}</td>
-                          <td style={{ padding: '12px' }}>{u.firstName} {u.lastName}</td>
-                          <td style={{ padding: '12px' }}>
-                            {u.isAdmin ? (
-                              <span style={{ background: '#ff9800', padding: '4px 10px', borderRadius: '12px', fontSize: '0.85em', color: 'white' }}>Admin</span>
-                            ) : (
-                              <span style={{ background: '#2196f3', padding: '4px 10px', borderRadius: '12px', fontSize: '0.85em', color: 'white' }}>User</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {users.map((u, i) => {
+                        const initials = `${(u.firstName || '').charAt(0)}${(u.lastName || '').charAt(0)}`.toUpperCase() || '?';
+                        const colors = ['4f46e5', '2563eb', '7c3aed', '0891b2', 'db2777', 'ea580c', '16a34a', 'd97706'];
+                        const bgColor = colors[i % colors.length];
+                        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent((u.firstName || '') + ' ' + (u.lastName || ''))}&background=${bgColor}&color=fff&size=128&bold=true&font-size=0.4`;
+                        
+                        return (
+                          <tr key={u.username || i} style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                            <td style={{ padding: '12px' }}>
+                              <img 
+                                src={avatarUrl}
+                                alt={initials}
+                                style={{
+                                  width: '45px',
+                                  height: '45px',
+                                  borderRadius: '50%',
+                                  objectFit: 'cover',
+                                  border: '2px solid rgba(255,255,255,0.2)',
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)'
+                                }}
+                              />
+                            </td>
+                            <td style={{ padding: '12px' }}>{u.username}</td>
+                            <td style={{ padding: '12px' }}>{u.firstName} {u.lastName}</td>
+                            <td style={{ padding: '12px' }}>
+                              {u.isAdmin ? (
+                                <span style={{ background: '#ff9800', padding: '4px 10px', borderRadius: '12px', fontSize: '0.85em', color: 'white' }}>Admin</span>
+                              ) : (
+                                <span style={{ background: '#2196f3', padding: '4px 10px', borderRadius: '12px', fontSize: '0.85em', color: 'white' }}>User</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

@@ -1578,6 +1578,15 @@ export function deleteCustomQuestion(id) {
   localStorage.setItem('lqp_customQuestions', JSON.stringify(filtered))
 }
 
+export function updateCustomQuestion(id, updatedData) {
+  const custom = getCustomQuestions()
+  const index = custom.findIndex((q) => q.id === id)
+  if (index !== -1) {
+    custom[index] = { ...custom[index], ...updatedData }
+    localStorage.setItem('lqp_customQuestions', JSON.stringify(custom))
+  }
+}
+
 export function getAllQuestionsForCategory(category) {
   const bank = buildQuestionBank()
   const custom = getCustomQuestions().filter(

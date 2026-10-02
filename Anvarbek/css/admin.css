@@ -1,0 +1,113 @@
+
+.header_list li:hover {
+    color: #3498db; /* Sichqoncha kelganda ko'k rangga o'tadi */
+}
+
+/* 3. Qidiruv inputi (Search Product) */
+.search_product {
+    padding: 8px 15px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    outline: none;
+    width: 200px;
+    transition: all 0.3s ease;
+}
+
+.search_product:focus {
+    border-color: #3498db;
+    width: 250px; /* Bosilganda biroz kengayadi */
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
+}
+
+/* 4. Chiqish tugmasi (Logout) */
+.logout {
+    background-color: #e74c3c;
+}* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  background-color: #f7f9fc;
+  padding: 40px 20px;
+}
+
+/* Loading holati */
+.loding {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60vh;
+}
+
+.lading_title {
+  color: #4f46e5;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+/* Grid konteyner */
+#container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 24px;
+}
+
+/* Kartochka dizayni */
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 30px 20px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* Dumaloq avatar */
+.avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 2px solid #5046e5;
+  padding: 3px;
+  object-fit: cover;
+  margin-bottom: 16px;
+  background-color: #f0f2f5;
+}
+
+/* Foydalanuvchi ismi */
+.user-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 6px;
+}
+
+/* Yoshi */
+.user-age {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4338ca;
+  margin-bottom: 12px;
+}
+
+/* E-pochta manzili */
+.user-email {
+  font-size: 13px;
+  color: #8a94a6;
+  word-break: break-all;
+}
